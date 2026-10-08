@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#030712">
+<title>CUET CSE 25 Widget Connection</title>
+<style>
+:root{color-scheme:dark;--bg:#030712;--card:#081322;--line:#1a3c50;--fg:#e5f4fc;--mut:#8399ad;--cyan:#5fd4e8;--mono:ui-monospace,"SFMono-Regular",Consolas,monospace;--head:system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;min-height:100vh;padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom);background:radial-gradient(ellipse at 15% 0%,#0d2834 0,transparent 45%),var(--bg);color:var(--fg);font:14px/1.5 var(--mono)}main{max-width:520px;margin:0 auto;padding:18px 0 26px}.top{margin:4px 2px 16px}.brand{font:800 13px var(--head);letter-spacing:.1em;color:var(--cyan)}.card{border:1px solid var(--line);background:linear-gradient(145deg,rgba(11,28,44,.95),rgba(4,11,23,.95));padding:15px;margin:10px 0;box-shadow:0 10px 30px #0005}.label{font:700 10px var(--head);letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:9px}.big{font:700 20px var(--head);line-height:1.3;color:#fff}.sub{font-size:11px;color:var(--mut);margin-top:5px}.actions{display:flex;gap:8px;margin:14px 0}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:8px 13px;border:1px solid var(--line);background:#091827;color:var(--cyan);font:700 11px var(--mono);text-decoration:none;cursor:pointer}.btn.primary{background:var(--cyan);color:#04111a;border-color:var(--cyan)}.hint{font-size:10px;color:var(--mut);padding:4px 3px}
+</style>
+</head>
+<body>
+<main>
+ <div class="top"><div class="brand">CUET CSE // 25</div></div>
+ <section class="card"><div class="label">Home-screen widget connection</div><div id="status" class="big">Updating your phone widget...</div><div id="detail" class="sub">This companion screen syncs the latest snapshot.</div></section>
+ <div class="actions"><button class="btn primary" id="refresh" type="button">Update widget</button><a class="btn" href="/">Open full site</a></div>
+ <p class="hint">Your installed phone widget displays the saved schedule, academic week, and unread alert count.</p>
+</main>
+<script>
+(()=>{
+const $=s=>document.querySelector(s),KEY='cse25:phone-widget:v1';
+const pad=n=>String(n).padStart(2,'0'),keyDate=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()),dateLabel=d=>d.toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'}),mins=t=>{const m=/^(\d{2}):(\d{2})$/.exec(t||'');return m?+m[1]*60+ +m[2]:0};
+function summary(state,user){const now=new Date(),minutes=now.getHours()*60+now.getMinutes(),routine=state.routine||[],vac=state.vac||[],courses=state.courses||[],classes=[];
+ const applies=x=>!x.for||x.for==='All'||x.for===user.sec||x.for===user.g;
+ for(let offset=0;offset<8;offset++){const day=new Date(now.getFullYear(),now.getMonth(),now.getDate()+offset),date=keyDate(day);if(day.getDay()===0||day.getDay()===6||vac.some(v=>date>=v.f&&date<=v.to))continue;
+  routine.filter(r=>r.d===day.getDay()&&applies(r)).sort((a,b)=>mins(a.s)-mins(b.s)).forEach(r=>{if(offset===0&&mins(r.e)<=minutes)return;const c=courses.find(x=>x.code===r.c),room=r.k==='Lab'?'Lab':user.sec==='A'?'Room 3303':user.sec==='B'?'Room 3307':'';classes.push({date,offset,day:dateLabel(day),start:r.s,end:r.e,course:(c?c.code+' · ':'')+(c?c.t:r.c),room})})}
+ const read=state.read||{},ids=read.ids||{};let base=read.set?read.base:Date.now()-3*864e5;try{const local=JSON.parse(localStorage.getItem('cse25read:'+user.id)||'{}');if(!read.set)base=local.base||base;Object.keys(local).forEach(k=>{if(k!=='base'&&local[k])ids[k]=1})}catch{}
+ const alerts=[];const add=(arr,kind)=>arr.filter(x=>applies(x)&&x.owner!==user.id).forEach(x=>alerts.push({id:x.id+(kind==='ct'&&x.x?'x':''),ts:x.ts}));add(state.notices||[],'notice');add(state.cts||[],'ct');add((state.nodes||[]).filter(x=>x.ty!=='folder'),'node');add((state.polls||[]).map(x=>({...x,owner:x.ow})),'poll');const unread=alerts.filter(x=>x.ts>base&&!ids[x.id]).length;
+ const start=state.profile.ss?new Date(state.profile.ss+'T00:00:00'):null,end=state.profile.se?new Date(state.profile.se+'T00:00:00'):null;let week=0,total=0,pct=0;if(start&&end&&end>start){const span=Math.max(1,Math.ceil((end-start)/6048e5)),elapsed=Math.max(0,Math.floor((new Date(now.getFullYear(),now.getMonth(),now.getDate())-start)/6048e5));total=span;week=Math.min(total,elapsed+1);pct=Math.max(0,Math.min(100,((now-start)/(end-start))*100))}
+ return{today:dateLabel(now),classes:classes.slice(0,4),unread,week,total,pct,term:state.profile.term||'Academic cycle',updated:new Date().toISOString(),name:state.profile.name||user.name,sec:user.sec,group:user.g}}
+async function refresh(){const button=$('#refresh');button.disabled=true;$('#status').textContent='Updating your phone widget...';try{const [me,state]=await Promise.all(['/api/me','/api/state'].map(u=>fetch(u,{credentials:'same-origin',cache:'no-store'})));if(me.status===401||state.status===401){$('#status').textContent='Sign in required';$('#detail').textContent='Open the full site, sign in, then return here to update your widget.';return}if(!me.ok||!state.ok)throw Error('Could not refresh');const user=await me.json(),data=await state.json(),x=summary(data,user);localStorage.setItem(KEY,JSON.stringify(x));try{window.WidgetBridge?.saveSnapshot(JSON.stringify(x))}catch{}try{window.webkit?.messageHandlers?.widgetSnapshot?.postMessage(x)}catch{}$('#status').textContent='Widget updated';$('#detail').textContent='Snapshot saved at '+new Date(x.updated).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'.'}catch{$('#status').textContent='Could not update widget';$('#detail').textContent='Reconnect to the server and try again.'}finally{button.disabled=false}}
+$('#refresh').addEventListener('click',refresh);window.refreshPhoneWidget=refresh;refresh();
+})();
+</script>
+</body>
+</html>
