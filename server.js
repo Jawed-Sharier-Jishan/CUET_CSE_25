@@ -263,7 +263,11 @@ async function api(req, res, m, p) {
   const ip = String(req.headers['x-forwarded-for'] || '').split(',').pop().trim() || req.socket.remoteAddress; // behind a host's proxy, use the client address it appends
   let x;
 
-  if (m === 'GET' && p === '/api/students') return send(res, 200, all_('SELECT id,name FROM users ORDER BY id').map(u => ({ n: u.name, r: u.id, ...place(u.id) })));
+  if (m === 'GET' && p === '/api/students') return send(res, 200, all_("SELECT id,name,length(COALESCE(json_extract(profile,'$.photo'),'')) AS ph FROM users ORDER BY id").map(u => ({ n: u.name, r: u.id, ph: u.ph > 0 ? u.ph : 0, ...place(u.id) })));
+  if (m === 'GET' && (x = p.match(/^\/api\/avatar\/(\d{7})$/))) { // public profile photo as a real image (cacheable); ?v= changes when the photo changes
+    const t = inRange(x[1]) ? one('SELECT profile FROM users WHERE id=?', x[1]) : null, ph = t ? (JSON.parse(t.profile || '{}').photo || '') : '', mm = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+\/=]+)$/.exec(ph);
+    if (!mm) throw { code: 404, error: 'No photo' };
+    res.writeHead(200, { 'Content-Type': 'image/' + mm[1], 'Cache-Control': 'public, max-age=86400', 'X-Content-Type-Options': 'nosniff' }); return res.end(Buffer.from(mm[2], 'base64')); }
   if (m === 'GET' && p.startsWith('/api/public/user/')) {
     const pid = decodeURIComponent(p.slice('/api/public/user/'.length)), t = one('SELECT id,name,profile FROM users WHERE id=?', pid); if (!t || !inRange(t.id)) throw { code: 404, error: 'Not found' };
     const q = JSON.parse(t.profile || '{}');
