@@ -1,0 +1,9 @@
+node_modules/
+.git/
+uploads/
+data.db*
+push-vapid.json
+native/
+.firebase/
+firebase-debug.log
+firestore-debug.log

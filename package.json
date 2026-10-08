@@ -1,0 +1,20 @@
+{
+  "name": "cuet-cse25",
+  "version": "1.0.0",
+  "main": "firebase-function.js",
+  "scripts": {
+    "start": "node server.js",
+    "render": "node render-server.js",
+    "vapid": "node scripts/make-vapid.js",
+    "deploy": "firebase deploy"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "cloudinary": "^2.7.0",
+    "firebase-admin": "^13.5.0",
+    "firebase-functions": "^6.4.0",
+    "web-push": "^3.6.7"
+  }
+}
