@@ -1098,6 +1098,7 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
 .dcard dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:12px}.dcard dt{color:var(--mut)}.dcard dd{margin:0}
 .mrow .class-title{cursor:pointer}.mrow.on{border-color:var(--acc)}
 .fbq{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.av.has{background-size:cover;background-position:center 20%;font-size:0;text-shadow:none;border-color:var(--acc)}
 </style>
 </head>
 <body>
@@ -1371,14 +1372,15 @@ function ini(n){return n.split(/\s+/).map(function(w){return w[0]}).slice(0,2).j
 
 var gf="",sg=document.getElementById("sg"),sIdx=0,sTimer=null,sHold=false;
 function sList(){return STUDENTS.slice().sort(function(a,b){return String(a.r).localeCompare(String(b.r))}).filter(function(s){return !gf||s.g===gf||s.sec===gf})}
-function sCard(s){return '<div class="card sc" data-id="'+esc(s.r)+'" role="button" tabindex="0"><div class="av">'+esc(ini(s.n))+'</div><b>'+esc(s.n)+'</b><small>ID: '+esc(s.r)+'</small>'+(s.g?'<small>Section '+esc(s.sec)+' · Group '+esc(s.g)+'</small>':'')+'</div>'}
+function sCard(s){return '<div class="card sc" data-id="'+esc(s.r)+'" role="button" tabindex="0"><div class="av"'+(s.ph?' data-bg="/api/avatar/'+encodeURIComponent(s.r)+'?v='+s.ph+'"':'')+'>'+esc(ini(s.n))+'</div><b>'+esc(s.n)+'</b><small>ID: '+esc(s.r)+'</small>'+(s.g?'<small>Section '+esc(s.sec)+' · Group '+esc(s.g)+'</small>':'')+'</div>'}
+function loadAv(root){root.querySelectorAll('.av[data-bg]:not([data-ld])').forEach(function(a){a.setAttribute('data-ld','1');var u=a.getAttribute('data-bg'),im=new Image();im.onload=function(){a.style.backgroundImage='url("'+u+'")';a.classList.add('has');a.textContent=''};im.src=u})}
 function sPos(){
  var l=sList(),n=l.length,cs=sg.querySelectorAll(".cw");
  cs.forEach(function(w,i){
   var o=((i-sIdx)%n+n)%n;if(o>n/2)o-=n;
   var vis=Math.abs(o)<=1,near=Math.abs(o)<=2;
   w.style.transform="translateX("+(o*108)+"%) scale("+(o===0?1.12:.86)+")";
-  w.classList.toggle("c",o===0);w.classList.toggle("h",!vis);w.classList.toggle("nt",!near);
+  w.classList.toggle("c",o===0);w.classList.toggle("h",!vis);w.classList.toggle("nt",!near);if(near)loadAv(w);
   w.setAttribute("aria-hidden",vis?"false":"true");
  });
  var k=document.getElementById("scnt");if(k)k.textContent=n?(sIdx+1)+" / "+n:"";
@@ -1395,6 +1397,7 @@ function drawS(){
   var m=l.filter(function(s){return String(s.n).toLowerCase().indexOf(q)>-1||String(s.r).toLowerCase().indexOf(q)>-1});
   var ex=m.filter(function(s){return String(s.r).toLowerCase()===q});if(ex.length)m=ex;
   sg.innerHTML=m.length?'<div class="sres">'+m.slice(0,12).map(sCard).join("")+'</div>'+(m.length>12?'<p class="scnt">Showing 12 of '+m.length+' matches. Type more to narrow it down.</p>':''):'<p class="empty">No student found.</p>';
+  loadAv(sg);
   return;
  }
  if(!l.length){sg.innerHTML='<p class="empty">No students found.</p>';return}
