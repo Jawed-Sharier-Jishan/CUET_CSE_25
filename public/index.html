@@ -21,8 +21,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="CUET CSE '25">
 <meta name="twitter:image" content="%%ORIGIN%%/og-image.jpg?v=20261009">
-<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png?v=20261009">
-<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=20261009">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png?v=20261010">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=20261010">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1653,30 +1653,38 @@ function startLogo(){if(hl.classList.contains('go'))return;hl.classList.add('go'
 setTimeout(function g(){hl.classList.add('gl');try{S.key();S.whoosh()}catch(e){}setTimeout(()=>hl.classList.remove('gl'),380);setTimeout(g,10000+Math.random()*6000)},3600)}
 if(!RM&&FINE){let px=0,py=0,pending=false;const clamp=v=>Math.max(-1,Math.min(1,v));addEventListener('pointermove',e=>{if(mainPortal.hidden)return;px=e.clientX;py=e.clientY;if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;const r=hl.getBoundingClientRect();if(r.width&&r.height){hl.style.setProperty('--ry',(clamp((px-r.left-r.width/2)/(r.width*.5))*12)+'deg');hl.style.setProperty('--rx',(-clamp((py-r.top-r.height/2)/(r.height*.5))*10)+'deg')}})},{passive:true});addEventListener('blur',()=>{hl.style.setProperty('--ry','0deg');hl.style.setProperty('--rx','0deg')})}
 if(matchMedia('(pointer:coarse)').matches||matchMedia('(max-width:768px)').matches){
- /* Phone tilt: the logo follows how the phone has turned relative to how it is being held.
-    Uses the full rotation matrix (no Euler gimbal flips when the phone is upright), a slowly re-centring
-    reference pose (a new holding position settles back to flat), a dead zone and smoothing (no jitter). */
- const Orientation=window.DeviceOrientationEvent,Motion=window.DeviceMotionEvent,RAD=Math.PI/180,clamp=(v,m)=>Math.max(-m,Math.min(m,v));
- const MAX=26,GAIN=1.5,DEAD=.4,TAU=5000,EASE=.16;
- let listening=false,gotOrientation=false,orientationActive=false,B=null,lastT=0,baseX=null,baseY=null,tx=0,ty=0,sx=0,sy=0,raf=0;
- hl.title='Tap to enable motion tilt';
- const mat=(a,b,g)=>{const ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b),cg=Math.cos(g),sg=Math.sin(g);return[ca*cg-sa*sb*sg,-cb*sa,cg*sa*sb+ca*sg,cg*sa+ca*sb*sg,ca*cb,sa*sg-ca*cg*sb,-cb*sg,sb,cb*cg]};
- const mulT=(P,Q)=>{const r=[];for(let i=0;i<3;i++)for(let j=0;j<3;j++)r.push(P[i]*Q[j]+P[3+i]*Q[3+j]+P[6+i]*Q[6+j]);return r};
- const mul=(P,Q)=>{const r=[];for(let i=0;i<3;i++)for(let j=0;j<3;j++)r.push(P[i*3]*Q[j]+P[i*3+1]*Q[3+j]+P[i*3+2]*Q[6+j]);return r};
- const expm=(x,y,z)=>{const t=Math.hypot(x,y,z);if(t<1e-9)return[1,0,0,0,1,0,0,0,1];const kx=x/t,ky=y/t,kz=z/t,c=Math.cos(t),s=Math.sin(t),v=1-c;return[c+kx*kx*v,kx*ky*v-kz*s,kx*kz*v+ky*s,ky*kx*v+kz*s,c+ky*ky*v,ky*kz*v-kx*s,kz*kx*v-ky*s,kz*ky*v+kx*s,c+kz*kz*v]};
+ /* Phone tilt. Tap the logo to switch it on, tap again to switch it off.
+    Direction of gravity is read from the phone (no compass, so no yaw drift or heading noise); the logo tilts by how far
+    gravity has moved from where you were holding the phone, that holding pose slowly re-centres, and the motion is
+    smoothed with a small dead zone. Add ?tiltdebug to the address to show live sensor numbers on screen. */
+ const Orientation=window.DeviceOrientationEvent,Motion=window.DeviceMotionEvent,RAD=Math.PI/180,clamp=(v,m)=>Math.max(-m,Math.min(m,v)),IOS=/iP(hone|ad|od)/.test(navigator.userAgent);
+ const MAX=26,GAIN=1.6,DEAD=.5,TAU=5000,EASE=.18;
+ let on=false,busy=false,gotOrientation=false,orientationActive=false,u0=null,lastT=0,tx=0,ty=0,sx=0,sy=0,raf=0,n=0,t0=0,hz=0,dbgEl=null,dbgT=0,dbgB=0,dbgG=0;
+ hl.title='Tap to turn motion tilt on or off';
+ if(/[?&]tiltdebug/.test(location.search)){dbgEl=D.createElement('pre');dbgEl.style.cssText='position:fixed;left:6px;bottom:6px;z-index:99999;margin:0;padding:6px 8px;font:11px/1.4 monospace;color:#5fd4e8;background:rgba(0,0,0,.78);border:1px solid #5fd4e8;pointer-events:none;white-space:pre';D.body.appendChild(dbgEl)}
+ const dbg=(src)=>{if(!dbgEl)return;const t=performance.now();if(t-dbgT<200)return;dbgT=t;dbgEl.textContent='tilt '+(on?'ON ':'off')+'  src '+src+'  '+hz+' Hz\nbeta '+dbgB.toFixed(1)+'  gamma '+dbgG.toFixed(1)+'\nry '+sx.toFixed(1)+'  rx '+sy.toFixed(1)+'\nscreen '+((screen.orientation&&screen.orientation.angle)||window.orientation||0)}
  const dz=v=>Math.abs(v)<DEAD?0:v-Math.sign(v)*DEAD;
- const draw=()=>{raf=0;sx+=(tx-sx)*EASE;sy+=(ty-sy)*EASE;hl.style.setProperty('--ry',sx.toFixed(2)+'deg');hl.style.setProperty('--rx',sy.toFixed(2)+'deg');if(Math.abs(tx-sx)+Math.abs(ty-sy)>.03)raf=requestAnimationFrame(draw)};
+ const draw=()=>{raf=0;sx+=(tx-sx)*EASE;sy+=(ty-sy)*EASE;hl.style.setProperty('--ry',sx.toFixed(2)+'deg');hl.style.setProperty('--rx',sy.toFixed(2)+'deg');if(Math.abs(tx-sx)+Math.abs(ty-sy)>.03)raf=requestAnimationFrame(draw);else if(!on){hl.style.transition='';hl.style.willChange=''}};
  const kick=()=>{if(!raf&&!document.hidden)raf=requestAnimationFrame(draw)};
  const setTilt=(h,v)=>{const a=(((screen.orientation&&screen.orientation.angle)||window.orientation||0)%360+360)%360;let x=h,y=v;if(a===90){x=v;y=-h}else if(a===270){x=-v;y=h}else if(a===180){x=-h;y=-v}tx=clamp(dz(x)*GAIN,MAX);ty=clamp(-dz(y)*GAIN,MAX);kick()};
- const recentre=()=>{B=null;baseX=baseY=null;tx=ty=0;kick()};
- const orient=e=>{if(mainPortal.hidden||e.beta==null||e.gamma==null)return;gotOrientation=true;const C=mat((e.alpha||0)*RAD,e.beta*RAD,e.gamma*RAD),t=performance.now();if(!B){B=C;lastT=t;return}
-  const r=mulT(B,C),wx=(r[7]-r[5])/2,wy=(r[2]-r[6])/2,wz=(r[3]-r[1])/2,k=1-Math.exp(-clamp(t-lastT,0,100)/TAU);lastT=t;
-  if(Math.abs(wx)+Math.abs(wy)>.6*RAD)orientationActive=true;
-  if(k>0)B=mul(B,expm(wx*k,wy*k,wz*k));
-  setTilt(wy/RAD,wx/RAD)};
- const move=e=>{if(mainPortal.hidden||orientationActive)return;const a=e.accelerationIncludingGravity;if(!a||a.x==null||a.y==null||a.z==null)return;if(baseX===null){baseX=a.x;baseY=a.y;return}setTilt((a.x-baseX)*4,(a.y-baseY)*4);baseX+=(a.x-baseX)*.01;baseY+=(a.y-baseY)*.01};
- const enableMotion=async()=>{if(listening)return;if(!isSecureContext){toast('MOTION NEEDS HTTPS');return}if(!Orientation&&!Motion){toast('PHONE MOTION SENSOR UNAVAILABLE');return}try{const asks=[];if(Orientation&&typeof Orientation.requestPermission==='function')asks.push(Orientation.requestPermission());if(Motion&&typeof Motion.requestPermission==='function')asks.push(Motion.requestPermission());const permissions=await Promise.all(asks);if(permissions.length&&permissions.every(x=>x!=='granted')){toast('MOTION ACCESS DENIED');return}listening=true;hl.style.transition='none';recentre();if(Orientation)addEventListener('deviceorientation',orient,{passive:true});if(Motion)addEventListener('devicemotion',move,{passive:true});toast('TILT YOUR PHONE TO MOVE THE LOGO');setTimeout(()=>{if(!gotOrientation&&baseX===null){listening=false;if(Orientation)removeEventListener('deviceorientation',orient);if(Motion)removeEventListener('devicemotion',move);toast('NO MOTION DATA — CHECK HTTPS AND SENSOR PERMISSION')}},2200)}catch(e){listening=false;toast('MOTION ACCESS UNAVAILABLE')}};
- hl.addEventListener('click',enableMotion);
+ /* u = unit vector pointing "up" in the phone's own axes (x right, y toward top edge, z out of the screen) */
+ const feed=u=>{const t=performance.now();if(!u0){u0=u;lastT=t;return}
+  const wx=u[1]*u0[2]-u[2]*u0[1],wy=u[2]*u0[0]-u[0]*u0[2];            /* rotation of the phone about its own x and y axes since u0 */
+  const k=1-Math.exp(-clamp(t-lastT,0,100)/TAU);lastT=t;
+  const m=[u0[0]+(u[0]-u0[0])*k,u0[1]+(u[1]-u0[1])*k,u0[2]+(u[2]-u0[2])*k],l=Math.hypot(m[0],m[1],m[2])||1;u0=[m[0]/l,m[1]/l,m[2]/l];
+  setTilt(Math.asin(clamp(wy,1))/RAD,Math.asin(clamp(wx,1))/RAD)};
+ const orient=e=>{if(mainPortal.hidden||e.beta==null||e.gamma==null)return;gotOrientation=true;n++;const t=performance.now();if(t-t0>1000){hz=Math.round(n*1000/(t-t0));n=0;t0=t}
+  dbgB=e.beta;dbgG=e.gamma;const b=e.beta*RAD,g=e.gamma*RAD,u=[-Math.cos(b)*Math.sin(g),Math.sin(b),Math.cos(b)*Math.cos(g)];
+  if(u0&&!orientationActive&&Math.abs(u[0]-u0[0])+Math.abs(u[1]-u0[1])>.01)orientationActive=true;
+  feed(u);dbg('orientation')};
+ const move=e=>{if(mainPortal.hidden||orientationActive)return;const a=e.accelerationIncludingGravity;if(!a||a.x==null||a.y==null||a.z==null)return;const s=IOS?-1:1,l=Math.hypot(a.x,a.y,a.z)||1;feed([s*a.x/l,s*a.y/l,s*a.z/l]);dbg('motion')};
+ const recentre=()=>{u0=null;tx=ty=0;kick()};
+ const stop=(msg)=>{on=false;removeEventListener('deviceorientation',orient);removeEventListener('devicemotion',move);recentre();if(msg)toast(msg);dbg('-')};
+ const enableMotion=async()=>{if(on||busy)return;if(!isSecureContext){toast('MOTION NEEDS HTTPS');return}if(!Orientation&&!Motion){toast('PHONE MOTION SENSOR UNAVAILABLE');return}busy=true;try{const asks=[];if(Orientation&&typeof Orientation.requestPermission==='function')asks.push(Orientation.requestPermission());if(Motion&&typeof Motion.requestPermission==='function')asks.push(Motion.requestPermission());const permissions=await Promise.all(asks);if(permissions.length&&permissions.every(x=>x!=='granted')){toast('MOTION ACCESS DENIED');return}
+  on=true;gotOrientation=false;orientationActive=false;n=0;t0=performance.now();hl.style.transition='none';hl.style.willChange='transform';recentre();
+  if(Orientation)addEventListener('deviceorientation',orient,{passive:true});if(Motion)addEventListener('devicemotion',move,{passive:true});toast('TILT YOUR PHONE - TAP THE LOGO TO STOP');
+  setTimeout(()=>{if(on&&!gotOrientation&&!u0)stop('NO MOTION DATA - CHECK HTTPS AND SENSOR PERMISSION')},2200)}catch(e){on=false;toast('MOTION ACCESS UNAVAILABLE')}finally{busy=false}};
+ hl.addEventListener('click',()=>{if(on)stop('MOTION TILT OFF');else enableMotion()});
  addEventListener('orientationchange',recentre);D.addEventListener('visibilitychange',()=>{if(D.hidden){if(raf)cancelAnimationFrame(raf);raf=0}else recentre()});
 }
 /* boot sequence, once per session */
