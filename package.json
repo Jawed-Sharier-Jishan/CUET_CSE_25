@@ -4,9 +4,8 @@
   "main": "firebase-function.js",
   "scripts": {
     "start": "node server.js",
-    "render": "node render-server.js",
-    "vapid": "node scripts/make-vapid.js",
-    "deploy": "firebase deploy"
+    "deploy": "firebase deploy",
+    "start:render": "node render-server.js"
   },
   "engines": {
     "node": ">=22.5"

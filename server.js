@@ -263,11 +263,14 @@ async function api(req, res, m, p) {
   const ip = String(req.headers['x-forwarded-for'] || '').split(',').pop().trim() || req.socket.remoteAddress; // behind a host's proxy, use the client address it appends
   let x;
 
-  if (m === 'GET' && p === '/api/students') return send(res, 200, all_("SELECT id,name,length(COALESCE(json_extract(profile,'$.photo'),'')) AS ph FROM users ORDER BY id").map(u => ({ n: u.name, r: u.id, ph: u.ph > 0 ? u.ph : 0, ...place(u.id) })));
-  if (m === 'GET' && (x = p.match(/^\/api\/avatar\/(\d{7})$/))) { // public profile photo as a real image (cacheable); ?v= changes when the photo changes
-    const t = inRange(x[1]) ? one('SELECT profile FROM users WHERE id=?', x[1]) : null, ph = t ? (JSON.parse(t.profile || '{}').photo || '') : '', mm = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+\/=]+)$/.exec(ph);
-    if (!mm) throw { code: 404, error: 'No photo' };
-    res.writeHead(200, { 'Content-Type': 'image/' + mm[1], 'Cache-Control': 'public, max-age=86400', 'X-Content-Type-Options': 'nosniff' }); return res.end(Buffer.from(mm[2], 'base64')); }
+  if (m === 'GET' && p === '/api/students') return send(res, 200, all_('SELECT id,name,profile FROM users ORDER BY id').map(u => { const ph = (JSON.parse(u.profile || '{}').photo || ''); return { n: u.name, r: u.id, ...place(u.id), ...(ph ? { ph: crypto.createHash('sha1').update(ph).digest('hex').slice(0, 8) } : {}) }; }));
+  if (m === 'GET' && p.startsWith('/api/avatar/')) {
+    const t = one('SELECT id,profile FROM users WHERE id=?', decodeURIComponent(p.slice('/api/avatar/'.length))); if (!t || !inRange(t.id)) throw { code: 404, error: 'Not found' };
+    const ph = JSON.parse(t.profile || '{}').photo || '', cache = 'public, max-age=86400';
+    if (/^https:\/\//.test(ph)) { res.writeHead(302, { Location: ph, 'Cache-Control': cache }); return res.end(); }
+    const mm = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+\/=]+)$/.exec(ph); if (!mm) throw { code: 404, error: 'No photo' };
+    res.writeHead(200, { 'Content-Type': mm[1], 'Cache-Control': cache }); return res.end(Buffer.from(mm[2], 'base64'));
+  }
   if (m === 'GET' && p.startsWith('/api/public/user/')) {
     const pid = decodeURIComponent(p.slice('/api/public/user/'.length)), t = one('SELECT id,name,profile FROM users WHERE id=?', pid); if (!t || !inRange(t.id)) throw { code: 404, error: 'Not found' };
     const q = JSON.parse(t.profile || '{}');
@@ -429,6 +432,11 @@ async function handleRequest(req, res) {
     if (p.startsWith('/api/')) return await api(req, res, req.method, p);
     const f = path.join(PUB, p === '/' ? 'index.html' : decodeURIComponent(p));
     if (!f.startsWith(PUB) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('Not found'); }
+    if (path.basename(f) === 'index.html') { // fill in absolute URLs for link previews (WhatsApp, Telegram, ...)
+      const origin = (process.env.SITE_URL || ((req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim() + '://' + (req.headers['x-forwarded-host'] || req.headers.host || 'localhost'))).replace(/\/+$/, '');
+      const html = fs.readFileSync(f, 'utf8').split('%%ORIGIN%%').join(origin.replace(/[<>"&]/g, ''));
+      res.writeHead(200, { 'Content-Type': MT['.html'] }); return res.end(html);
+    }
     res.writeHead(200, { 'Content-Type': MT[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res);
   } catch (e) { if (!e.code) console.error(e); res.headersSent ? res.end() : send(res, e.code || 500, { error: e.error || 'Server error' }); }
 }

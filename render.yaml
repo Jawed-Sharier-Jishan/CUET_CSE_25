@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: cuet-cse25
+    runtime: node
+    region: singapore        # closest Render region to Bangladesh
+    plan: free               # free plan sleeps after ~15 min idle; use "starter" to keep it awake
+    buildCommand: npm ci --omit=dev
+    startCommand: node render-server.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION    # server.js needs Node >= 22.5 (built-in node:sqlite)
+        value: 22
+      - key: CLOUDINARY_URL
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: mailto:u2504081@student.cuet.ac.bd
