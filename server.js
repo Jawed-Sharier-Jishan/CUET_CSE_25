@@ -40,11 +40,15 @@ webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:u2504081@student.cu
 const pushAlert = (owner, kind, data, id) => {
   let title, body;
   if (kind === 'notice') { title = 'New notice: ' + data.t; body = data.b; }
-  else if (kind === 'ct') { title = 'New test: ' + data.c; body = data.t + ' · ' + data.d; }
+  else if (kind === 'ct') { title = (data.x ? 'Test cancelled: ' : 'New test: ') + data.c; body = (data.ty || 'CT') + ' · ' + data.t + ' · ' + data.d + (data.tm ? ' ' + data.tm : ''); }
+  else if (kind === 'ctstart') { title = (data.ty || 'CT') + ' starts now: ' + data.c; body = data.t + ' · ' + (data.tm || ctDefaultTime(data)); }
   else if (kind === 'poll') { title = 'New poll'; body = data.q; }
+  else if (kind === 'pollres') { title = 'Poll results: ' + data.q; body = data.res; }
+  else if (kind === 'cancel' && !data.rm) { title = (data.k === 'Lab' ? 'Lab' : 'Class') + ' cancelled: ' + data.c; body = data.d + ' · ' + data.s + '-' + data.e; }
+  else if (kind === 'event' && 'x' in data) { title = (data.x ? 'Cancelled: ' : 'Restored: ') + data.t; body = data.d + (data.s ? ' · ' + data.s : ''); }
   else if (kind === 'node' && data.ty !== 'folder') { title = data.ty === 'link' ? 'New link' : 'New file'; body = data.t; }
   else return;
-  const category = ({ notice: 'notices', ct: 'tests', poll: 'polls', node: 'resources' })[kind];
+  const category = ({ notice: 'notices', ct: 'tests', ctstart: 'tests', poll: 'polls', pollres: 'polls', node: 'resources', cancel: 'notices', event: 'notices' })[kind];
   const target = data.for || 'All';
   const recipients = all_('SELECT id,role FROM users WHERE id<>?', owner).filter(u => {
     if (target === 'All' || !target) return true;
@@ -60,6 +64,34 @@ const pushAlert = (owner, kind, data, id) => {
     });
   }
 };
+// ---- time-based alerts: test start + poll results (Bangladesh time, UTC+6, no DST) ----
+const ctDefaultTime = d => ((d.ty || 'CT') === 'CT' ? '08:10' : '09:00');
+const ctStartMs = d => Date.parse(d.d + 'T' + (d.tm && /^\d\d:\d\d$/.test(d.tm) ? d.tm : ctDefaultTime(d)) + ':00+06:00');
+const pollCloseMs = (ts, d) => ts + (+d.cl || 24) * 36e5;
+function pollResultText(d) {
+  const n = (d.o || []).map(() => 0);
+  all_('SELECT opt FROM votes WHERE poll=?', d.__id).forEach(v => { if (n[v.opt] != null) n[v.opt]++; });
+  const tot = n.reduce((a, b) => a + b, 0); if (!tot) return 'Closed with no votes.';
+  const top = Math.max(...n), win = d.o.filter((_, i) => n[i] === top);
+  return (win.length > 1 ? 'Tie: ' + win.join(' / ') : 'Winner: ' + win[0]) + ' (' + top + ' of ' + tot + ' vote' + (tot === 1 ? '' : 's') + ')';
+}
+function timedAlerts() {
+  const now = Date.now();
+  for (const r of all_("SELECT id,owner,data,ts,kind FROM items WHERE kind IN ('ct','poll')")) {
+    let d; try { d = JSON.parse(r.data); } catch { continue; }
+    if (r.kind === 'ct') {
+      if (d.sn || d.done) continue;
+      const at = ctStartMs(d); if (!(now >= at)) continue;
+      d.sn = 1; run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), r.id);
+      if (!d.x && now < at + 90 * 6e4) pushAlert('', 'ctstart', d, r.id + 's');
+    } else {
+      if (d.rn || !(now >= pollCloseMs(r.ts, d))) continue;
+      d.rn = 1; run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), r.id);
+      if (now < pollCloseMs(r.ts, d) + 12 * 36e5) pushAlert('', 'pollres', { ...d, res: pollResultText({ ...d, __id: r.id }) }, r.id + 'r');
+    }
+  }
+}
+setTimeout(() => { try { timedAlerts(); } catch (e) { console.warn('timedAlerts:', e.message); } const t = setInterval(() => { try { timedAlerts(); } catch (e) { console.warn('timedAlerts:', e.message); } }, 60000); t.unref && t.unref(); }, 90000).unref?.();
 const settings = () => { const r = one("SELECT data FROM items WHERE kind='settings'"); return r ? JSON.parse(r.data) : {}; };
 // Roll 2504xxx -> Section A: 001..aEnd, Section B: aEnd+1..bEnd; each section split into two groups (first half = 1, rest = 2)
 function place(id) {
@@ -182,10 +214,10 @@ async function gupload(req, res) {
   const id = put('photo', U.id, data); if (!cloudinary) fs.writeFileSync(path.join(UP, id), buf); return send(res, 200, { id });
 }
 // ---- validation -------------------------------------------------------
-const FIELDS = { course: ['code', 't', 'cr', 'th', 'ty'], routine: ['d', 's', 'e', 'c', 'k', 'for'], ct: ['c', 't', 'd', 'm', 'sy', 'ty', 'for'], vac: ['t', 'f', 'to'], notice: ['t', 'b', 'd', 'for'],
+const FIELDS = { course: ['code', 't', 'cr', 'th', 'ty'], routine: ['d', 's', 'e', 'c', 'k', 'for'], ct: ['c', 't', 'd', 'm', 'sy', 'ty', 'for', 'tm'], cancel: ['d', 'rid', 'rm'], vac: ['t', 'f', 'to'], notice: ['t', 'b', 'd', 'for'],
   res: ['t', 'u', 'c', 'p'], project: ['t', 'c', 's', 'd', 'u'], event: ['d', 't', 'for', 'k', 's', 'e'], poll: ['q', 'o', 'cl'], fb: ['t', 'c', 'an'], node: ['t', 'p', 'ty', 'u'] };
 // Only admins may change shared content (including calendar events). Students only touch their own data (attendance, profile) and may vote.
-const ADMIN = new Set(['node', 'course', 'routine', 'ct', 'vac', 'notice', 'res', 'project', 'poll', 'event']);
+const ADMIN = new Set(['node', 'course', 'routine', 'ct', 'vac', 'notice', 'res', 'project', 'poll', 'event', 'cancel']);
 const DR = /^\d{4}-\d\d-\d\d$/, TR = /^\d\d:\d\d$/;
 const bad = m => { throw { code: 400, error: m }; };
 const normUrl = u => { u = String(u || '').trim(); if (!/^https?:\/\//i.test(u)) u = 'https://' + u; try { return new URL(u).href; } catch { return bad('Invalid URL'); } };
@@ -195,7 +227,14 @@ function clean(kind, d) {
   const need = (...f) => f.forEach(x => { if (!o[x]) bad('Missing field: ' + x); });
   if (kind === 'routine') { need('d', 's', 'e', 'c'); o.d = +o.d; if (!(o.d >= 0 && o.d <= 4) || !TR.test(o.s) || !TR.test(o.e) || o.e <= o.s) bad('Invalid day or time'); o.k = o.k === 'Lab' ? 'Lab' : 'Class'; }
   if (kind === 'course') { need('code', 't'); o.code = o.code.toUpperCase(); o.cr = Math.min(6, Math.max(0, +o.cr || 0)); o.th = o.th || ''; o.ty = o.ty === 'Sessional' ? 'Sessional' : 'Theory'; }
-  if (kind === 'ct') { need('c', 't', 'd'); if (!DR.test(o.d)) bad('Invalid date'); o.m = o.m || ''; o.done = 0; }
+  if (kind === 'ct') { need('c', 't', 'd'); if (!DR.test(o.d)) bad('Invalid date'); o.m = o.m || ''; o.done = 0; o.tm = TR.test(o.tm || '') ? o.tm : ''; }
+  if (kind === 'cancel') { need('d', 'rid'); if (!DR.test(o.d)) bad('Invalid date');
+    const rr = one("SELECT data FROM items WHERE kind='routine' AND id=?", o.rid); if (!rr) bad('Unknown class');
+    const ro = JSON.parse(rr.data); if (new Date(o.d + 'T00:00:00Z').getUTCDay() !== +ro.d) bad('That class does not meet on this date');
+    o.rm = o.rm === '1' || o.rm === 'true' || o.rm === 1 ? 1 : 0;
+    const dup = all_("SELECT id,data FROM items WHERE kind='cancel'").find(x => { const y = JSON.parse(x.data); return y.rid === o.rid && y.d === o.d; });
+    if (dup) { if (o.rm && !JSON.parse(dup.data).rm) o.__upg = dup.id; else bad('Already cancelled'); }
+    o.c = ro.c; o.s = ro.s; o.e = ro.e; o.k = ro.k || 'Class'; o.for = ro.for || 'All'; }
   if (kind === 'vac') { need('t', 'f', 'to'); if (!DR.test(o.f) || !DR.test(o.to) || o.to < o.f) bad('Invalid dates'); }
   if (kind === 'notice') { need('t', 'b'); if (!DR.test(o.d || '')) o.d = new Date().toISOString().slice(0, 10); o.pin = 0; }
   if (kind === 'res') { need('t', 'u'); o.u = normUrl(o.u); o.c = o.c || ''; }
@@ -244,7 +283,7 @@ function state(u) {
   return { creator, role: isStaff(u) ? 'admin' : 'student', isCreator: u.id === CID, tier: { ...flags(u.id === CID ? mkRole(true, flags(u.role).cr) : u.role) }, read: rdd ? { set: 1, base: rdd.base, ids: rdd.ids } : { set: 0, base: 0, ids: {} }, ...place(u.id), users: all_('SELECT id,name,role,profile FROM users ORDER BY id').map(x => { const q = JSON.parse(x.profile || '{}'); const fl = flags(x.id === CID ? mkRole(true, flags(x.role).cr) : x.role); return { id: x.id, name: x.name, role: x.id === CID || x.role !== 'student' ? 'admin' : 'student', adm: fl.adm, cr: fl.cr, ...place(x.id), fb: q.fb || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '' }; }), profile: { ...pr, name: u.name, email: pr.email || '', phone: pr.phone || '', blood: pr.blood || '', term: st.term || '', aEnd: st.aEnd || 66, bEnd: st.bEnd || 132, ss: st.ss || '', se: st.se || '' },
     courses: of('course').map(c => { const a = att.find(x => x.c === c.id) || {}; return { id: c.id, code: c.code, t: c.t, cr: c.cr, th: c.th, ty: c.ty || '', p: a.p || 0, h: a.h || 0 }; }),
     routine: of('routine'), nodes: of('node'), marks: of('mark').filter(m => m.owner === u.id), fb: isStaff(u) ? of('fb').map(f => ({ ...f, by: f.an ? 'Anonymous' : (names[f.owner] || f.owner), ...(f.an && u.id === CID ? { real: (names[f.owner] || '') + ' (' + f.owner + ')' } : {}), owner: undefined })) : [],
-    gallery: of('photo').map(g => ({ id: g.id, ts: g.ts, cap: g.cap || '', al: g.al || 'General', by: names[g.owner] || g.owner, mine: g.owner === u.id })), cts: of('ct'), res: of('res'), vac: of('vac'), notices: of('notice'), events: of('event').filter(e => e.sh || e.owner === u.id),
+    gallery: of('photo').map(g => ({ id: g.id, ts: g.ts, cap: g.cap || '', al: g.al || 'General', by: names[g.owner] || g.owner, mine: g.owner === u.id })), cts: of('ct'), cancels: of('cancel'), res: of('res'), vac: of('vac'), notices: of('notice'), events: of('event').filter(e => e.sh || e.owner === u.id),
     projects: of('project').map(p => ({ ...p, a: p.a || names[p.owner] || '—' })),
     polls: of('poll').map(p => { const vs = votes.filter(v => v.poll === p.id), mine = vs.find(v => v.uid === u.id); return { id: p.id, ow: p.owner, q: p.q, ts: p.ts, cl: p.cl || 24, o: p.o.map((t, i) => ({ t, v: vs.filter(v => v.opt === i).length })), my: mine ? mine.opt : -1 }; }) };
 }
@@ -402,12 +441,13 @@ async function api(req, res, m, p) {
   if (m === 'GET' && p === '/api/directory') { auth(); return send(res, 200, all_('SELECT id,name,profile FROM users ORDER BY id').map(y => { const q = JSON.parse(y.profile || '{}'); return { id: y.id, n: y.name, ...place(y.id), fb: q.fb || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '' }; })); }
   if (m === 'POST' && (x = p.match(/^\/api\/(\w+)$/)) && FIELDS[x[1]]) {
     const kind = x[1], u = auth(); if (ADMIN.has(kind)) admin(); const d = clean(kind, b);
+    if (d.__upg) { const rw = one('SELECT data FROM items WHERE id=?', d.__upg), y = JSON.parse(rw.data); y.rm = 1; run('UPDATE items SET data=? WHERE id=?', JSON.stringify(y), d.__upg); return send(res, 200, { id: d.__upg }); }
     if (kind === 'course' && all_("SELECT data FROM items WHERE kind='course'").some(r => JSON.parse(r.data).code === d.code)) throw { code: 409, error: 'Course already exists' };
     const id = put(kind, u.id, d); pushAlert(u.id, kind, d, id); return send(res, 200, { id });
   }
   if ((m === 'PATCH' || m === 'DELETE') && (x = p.match(/^\/api\/items\/(\w+)$/))) {
     const u = auth(), row = one('SELECT * FROM items WHERE id=?', x[1]); if (!row) throw { code: 404, error: 'Not found' };
-    if (m === 'PATCH') { admin(); const d = JSON.parse(row.data), wasCancelled = !!d.x; if (row.kind === 'ct') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) d.x = b.x ? 1 : 0; } else if (row.kind === 'notice' || row.kind === 'msg') d.pin = b.pin ? 1 : 0; else bad('Not editable'); run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); if (row.kind === 'ct' && wasCancelled !== !!d.x) pushAlert(row.owner, 'ct', d, row.id); return send(res, 200, { ok: 1 }); }
+    if (m === 'PATCH') { admin(); const d = JSON.parse(row.data), wasCancelled = !!d.x; if (row.kind === 'ct') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'event') { if ('x' in b) { d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'notice' || row.kind === 'msg') d.pin = b.pin ? 1 : 0; else bad('Not editable'); run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); if (row.kind === 'ct' && wasCancelled !== !!d.x) pushAlert(u.id, 'ct', d, row.id + (d.x ? 'x' : 'r')); if (row.kind === 'event' && wasCancelled !== !!d.x) pushAlert(u.id, 'event', d, row.id + (d.x ? 'x' : 'r')); return send(res, 200, { ok: 1 }); }
     // legacy personal calendar events (created before the calendar became admin-only) can still be removed by their owner
     const legacy = row.kind === 'event' && row.owner === u.id && !JSON.parse(row.data).sh;
     if (!legacy) { if (row.kind === 'msg') { if (!isStaff(u) && row.owner !== u.id) throw { code: 403, error: 'You can only delete your own messages' }; } else if (row.kind === 'photo') { if (!isStaff(u) && row.owner !== u.id) throw { code: 403, error: 'You can only delete your own photos' }; } else if (ADMIN.has(row.kind) || row.kind === 'fb') admin(); else throw { code: 403, error: 'Not allowed' }; }
@@ -475,4 +515,4 @@ function restorePersistentState(state) {
 }
 
 if (require.main === module) http.createServer(handleRequest).listen(PORT, () => console.log(`CUET CSE '25 running at http://localhost:${PORT}`));
-module.exports = { handleRequest, dumpPersistentState, restorePersistentState, cloudinaryEnabled: !!cloudinary };
+module.exports = { timedAlerts, handleRequest, dumpPersistentState, restorePersistentState, cloudinaryEnabled: !!cloudinary };
