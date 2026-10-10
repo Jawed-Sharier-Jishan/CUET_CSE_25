@@ -1288,7 +1288,9 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 :root[data-theme="light"] body{background:linear-gradient(180deg,#f6fafd 0%,var(--bg) 40%,#edf4f9 100%) fixed}
 :root[data-theme="light"] body::before,
 :root[data-theme="light"] body::after{display:none}
-:root[data-theme="light"] #bg-canvas{opacity:.6}
+:root[data-theme="light"] #bg-canvas{opacity:1}
+/* hero text gets a thin halo instead of a veil, so the background stays fully visible */
+:root[data-theme="light"] .hero p,:root[data-theme="light"] .hero .tag,:root[data-theme="light"] .hero .typed{text-shadow:0 0 3px #f3f8fb,0 0 7px #f3f8fb,0 0 12px rgba(243,248,251,.9)}
 :root[data-theme="light"] #sweep{opacity:.08}
 :root[data-theme="light"] ::selection{background:rgba(0,117,140,.22);color:var(--hd)}
 :root[data-theme="light"] :focus-visible{box-shadow:0 0 0 3px rgba(0,117,140,.22)}
@@ -2192,6 +2194,7 @@ $('#dsnd').addEventListener('click',()=>toast('SOUND: '+($('#snd').getAttribute(
 <script>
 (function(){
 const FX=window.FXX={},C={},N={},TAU=6.283;
+new MutationObserver(()=>{C.W=0}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 function pos(tr,p){let i=0;while(i<tr.seg.length-1&&p>tr.seg[i]){p-=tr.seg[i];i++}const a=tr.pts[i],b=tr.pts[i+1],f=Math.min(1,p/(tr.seg[i]||1));return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f]}
 /* realistic PCB: copper layer is pre-rendered in white and tinted live with the SUB color; silkscreen and package bodies stay neutral */
 const _k=document.createElement('canvas');_k.width=_k.height=1;const _kx=_k.getContext('2d',{willReadFrequently:true});
@@ -2200,7 +2203,7 @@ function mb(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,
 function cham(p,c){const o=[p[0]];for(let i=1;i<p.length-1;i++){const a=p[i-1],b=p[i],d=p[i+1],d0=Math.hypot(b[0]-a[0],b[1]-a[1])||1,d1=Math.hypot(d[0]-b[0],d[1]-b[1])||1,k=Math.min(c,d0/2,d1/2);o.push([b[0]+(a[0]-b[0])*k/d0,b[1]+(a[1]-b[1])*k/d0],[b[0]+(d[0]-b[0])*k/d1,b[1]+(d[1]-b[1])*k/d1])}o.push(p[p.length-1]);return o}
 function mk(W,H){const o=document.createElement('canvas');o.width=W;o.height=H;return o}
 function hole(g,u,v,r){g.save();g.globalCompositeOperation='destination-out';g.fillStyle='#000';g.beginPath();g.arc(u,v,r,0,6.283);g.fill();g.restore()}
-function build(W,H){const o=mk(W,H),nn=mk(W,H),g=o.getContext('2d'),n=nn.getContext('2d'),r=mb(2025),CU='rgba(255,255,255,',SK='rgba(205,220,232,',TAU=6.283;
+function build(W,H){const o=mk(W,H),nn=mk(W,H),g=o.getContext('2d'),n=nn.getContext('2d'),r=mb(2025),CU='rgba(255,255,255,',LT=document.documentElement.getAttribute('data-theme')==='light',SK=LT?'rgba(8,62,92,':'rgba(205,220,232,',TAU=6.283;
 C.o=o;C.n=nn;C.t=mk(W,H);
 const S=Math.min(150,W*.26,H*.3),ch=[{k:'qfp',x:W*.14,y:H*.3,s:S*.8,n:'U1'},{k:'bga',x:W*.82,y:H*.27,s:S,n:'U2'},{k:'lga',x:W*.5,y:H*.76,s:S*1.2,n:'U3'},{k:'qfn',x:W*.14,y:H*.8,s:S*.55,n:'U4'},{k:'qfn',x:W*.9,y:H*.78,s:S*.5,n:'U5'}];
 C.L=[];
@@ -2224,7 +2227,7 @@ n.strokeStyle=SK+'.28)';n.lineWidth=1;n.strokeRect(x0,y0,s,s);g.fillStyle=CU+'.5
 if(q.k==='qfp'){for(let i=0;i<Math.floor(B/6);i++){const u=bx+3+i*6,v=by+3+i*6;g.fillRect(u,by-8,2.6,8);g.fillRect(u,by+B,2.6,8);g.fillRect(bx-8,v,8,2.6);g.fillRect(bx+B,v,8,2.6)}}
 else if(q.k==='qfn'){for(let i=0;i<8;i++){const u=bx+4+i*(B-8)/7;g.fillRect(u,by-5,2.6,5);g.fillRect(u,by+B,2.6,5);g.fillRect(bx-5,u-bx+by,5,2.6);g.fillRect(bx+B,u-bx+by,5,2.6)}}
 else{const st=q.k==='bga'?7:5;g.fillStyle=CU+'.38)';for(let i=0;i<Math.floor(s/st);i++)for(let j=0;j<Math.floor(s/st);j++){const u=x0+i*st+3,v=y0+j*st+3;if(u<bx-2||u>bx+B+2||v<by-2||v>by+B+2){g.beginPath();g.arc(u,v,1.2,0,TAU);g.fill()}}}
-n.fillStyle='rgba(12,16,24,.96)';n.fillRect(bx,by,B,B);n.strokeStyle=SK+'.4)';n.strokeRect(bx,by,B,B);if(q.k==='lga')n.strokeRect(bx+B*.12,by+B*.12,B*.76,B*.76);
+n.fillStyle=LT?'rgba(255,255,255,.97)':'rgba(12,16,24,.96)';n.fillRect(bx,by,B,B);n.strokeStyle=SK+'.4)';n.strokeRect(bx,by,B,B);if(q.k==='lga')n.strokeRect(bx+B*.12,by+B*.12,B*.76,B*.76);
 n.fillStyle=SK+'.5)';n.beginPath();n.arc(bx+6,by+6,2,0,TAU);n.fill();n.font=Math.max(8,B/11)+'px monospace';n.fillStyle=SK+'.42)';T[q.k].forEach((t,i)=>n.fillText(t,bx+B*.22,by+B*.45+i*Math.max(10,B/9)));
 n.fillStyle=SK+'.4)';n.fillText(q.n,x0,y0-4)}
 for(const [u,v] of [[24,24],[W-24,24],[24,H-24],[W-24,H-24]]){g.strokeStyle=CU+'.55)';g.lineWidth=2;g.beginPath();g.arc(u,v,9,0,TAU);g.stroke();hole(g,u,v,5)}
@@ -2248,7 +2251,7 @@ x.globalAlpha=.4;x.beginPath();x.moveTo(A.x+(B.x-A.x)*Math.max(0,g.p-.15),A.y+(B
 for(const l of N.L)for(const n of l){const d=Math.hypot(n.x-mx,n.y-my),h=d<130;x.globalAlpha=h?1:.55;x.fillStyle=h?col2:col;x.beginPath();x.arc(n.x,n.y,(h?6:3.5)+Math.sin(t/500+n.x)*.8,0,TAU);x.fill();
 x.globalAlpha=.3;x.strokeStyle=h?col2:col;x.beginPath();x.arc(n.x,n.y,9+Math.sin(t/700+n.y)*2,0,TAU);x.stroke()}x.globalAlpha=1};
 /* quantum: dilution refrigerator (gold-plated stages, coax lines, QPU) + Rabi oscillation readout */
-FX.quantum=function(x,W,H,t,col,col2){x.clearRect(0,0,W,H);const T=t/1000,cx=W*(W<700?.5:.68),R=Math.min(W*.3,H*.26),top=H*.12,gap=Math.min(H*.15,96),G='rgba('+rgbc(col2)+',',SK='rgba(205,220,232,';
+FX.quantum=function(x,W,H,t,col,col2){x.clearRect(0,0,W,H);const T=t/1000,cx=W*(W<700?.5:.68),R=Math.min(W*.3,H*.26),top=H*.12,gap=Math.min(H*.15,96),G='rgba('+rgbc(col2)+',',SK=document.documentElement.getAttribute('data-theme')==='light'?'rgba(8,62,92,':'rgba(205,220,232,';
 const tiers=[['50 K','PT1',1],['4 K','PT2',.84],['800 mK','STILL',.68],['100 mK','COLD PLATE',.52],['10 mK','MIXING CHAMBER',.36]];
 x.lineWidth=1.2;x.font='11px monospace';
 for(let k=0;k<5;k++){const rx=R*tiers[k][2],ry=rx*.22,y=top+k*gap;
