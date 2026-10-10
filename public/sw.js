@@ -1,6 +1,6 @@
-const CACHE = 'cuet-cse25-shell-v12-logo-icons';
+const CACHE = 'cuet-cse25-shell-v16-app';
 const RESOURCE_CACHE = 'cuet-cse25-saved-resources-v1';
-const SHELL = ['/', '/manifest.webmanifest', '/x.js', '/icon-180.png', '/icon-192.png', '/icon-512.png'];
+const SHELL = ['/', '/manifest.webmanifest', '/x.js', '/app.js', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
