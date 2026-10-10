@@ -1,8 +1,10 @@
 /* CSE'25 feature pack: extends the dashboard views (loaded after the main scripts) */
 (()=>{const d=window.__d;if(!d)return;
 const {V,A,esc,H,E,F,S,X,mine,vis,tg,diff,rel,iso,pd,add,day0,DN,MN,fmt,call,done,toast,cOpts,dayInfo}=d,$=s=>document.querySelector(s),dv=$('#dashView'),Q=()=>d.db;
-const st={cf:'all',cv:'month',cat:'all',ct:'ov',cc:'',ctf:'up',ctt:'list',pt:'open',ns:'',al:'all',room:'U',rsec:'',rn:'',dsec:'',ph:'',dm:'',ga:'',gv:'',xo:{},sch:'cal',cx:'chat',nb:'notices'};
+const st={cf:'all',cv:'month',cat:'all',ct:'ov',cc:'',ctf:'up',ctt:'list',pt:'open',ns:'',al:'all',room:'U',rsec:'',rn:'',dsec:'',ph:'',dm:'',ga:'',gv:'',xo:{},sch:'cal',cx:'chat',nb:'notices',cg:''};
 Object.keys(st).forEach(k=>A['x_'+k]=id=>{st[k]=id});
+/* admin calendar: which group's calendar is being viewed/edited ('all' = every group) */
+const cgv=()=>{const q=Q();return q.role!=='admin'?'':(st.cg||q.g||'all')},cgd=()=>{const g=cgv();return!g||g==='all'?'All':g},gt=x=>cgv()==='all'&&x.for&&x.for!=='All'?' · '+x.for:'';
 A.x_dm=id=>{const prev=st.dm;st.dm=id;if(!id)st.ds='';setTimeout(()=>{const t=id?document.getElementById('dd'):[...document.querySelectorAll('.mrow')].find(r=>r.querySelector('[data-id="'+prev+'"]'));if(t)t.scrollIntoView({block:id?'start':'center',behavior:'smooth'})},90)};
 const IC=k=>'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',lock:'<rect x="5" y="11" width="14" height="9" rx="1"/><path d="M8 11V8a4 4 0 018 0v3"/>',chat:'<path d="M4 5h16v11H9l-5 4z"/>',bell:'<path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"/><path d="M10 21h4"/>',pin:'<path d="M9 3h6l-1 6 3 3H7l3-3z"/><path d="M12 12v9"/>',folder:'<path d="M3 6a2 2 0 012-2h4l2 2h8a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>',link:'<path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/>',file:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>',dl:'<path d="M12 4v11M7 11l5 5 5-5M5 20h14"/>',clip:'<path d="M20 11l-8 8a5 5 0 01-7-7l9-9a3.5 3.5 0 015 5l-9 9a2 2 0 01-3-3l8-8"/>',check:'<path d="M5 12l5 5 9-10"/>',undo:'<path d="M4 9h11a5 5 0 010 10H8"/><path d="M8 5L4 9l4 4"/>',notice:'<path d="M3 10v4h3l7 4V6L6 10z"/><path d="M17 8a5 5 0 010 8"/>',test:'<path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 13l2 2 4-4"/>',poll:'<path d="M5 20V10M12 20V4M19 20v-7"/>'})[k]+'</svg>';
 const p2=n=>String(n).padStart(2,'0'),when=ts=>{const x=new Date(ts);return x.getDate()+' '+MN[x.getMonth()]+' · '+p2(x.getHours())+':'+p2(x.getMinutes())};
@@ -27,9 +29,9 @@ const oh=V.home;V.home=()=>{const a=myCts(),n=k=>a.filter(c=>cs(c)===k).length,r
 /* CALENDAR: month / week / agenda with type filters */
 const KC={class:'Class',sess:'Sessional',ct:'Test',ev:'Event',hol:'Vacation'};
 const its=(s,f)=>{const D=pd(s),i=dayInfo(D),o=[];if(i.off&&D.getDay()<5){const vv=Q().vac.find(v=>s>=v.f&&s<=v.to)||{};o.push({k:'hol',t:i.off,m:'',vid:vv.id,vf:vv.f,vt:vv.to})}
- i.list.forEach(r=>o.push({k:r.k==='Lab'?'sess':'class',t:r.c,m:r.s,e:r.e,rid:r.id,xid:r.xid,x:!!r.xid,rm:!!r.rm}));
- Q().cts.filter(c=>c.d===s&&mine(c)).forEach(c=>o.push({k:'ct',ty:ty(c),t:c.c+' · '+c.t,m:c.tm||(ty(c)==='CT'?'08:10':''),e:ty(c)==='CT'&&!c.tm?'09:00':'',cid:c.id,x:!!c.x}));
- vis(Q().events).filter(e=>e.d===s).forEach(e=>o.push({k:e.k||'ev',t:e.t,m:e.s||'',e:e.e||'',id:e.id,x:!!e.x}));
+ i.list.forEach(r=>o.push({k:r.k==='Lab'?'sess':'class',t:r.c+gt(r),m:r.s,e:r.e,rid:r.id,xid:r.xid,x:!!r.xid,rm:!!r.rm}));
+ Q().cts.filter(c=>c.d===s&&mine(c)).forEach(c=>o.push({k:'ct',ty:ty(c),t:c.c+' · '+c.t+gt(c),m:c.tm||(ty(c)==='CT'?'08:10':''),e:ty(c)==='CT'&&!c.tm?'09:00':'',cid:c.id,x:!!c.x}));
+ Q().events.filter(e=>e.d===s&&mine(e)).forEach(e=>o.push({k:e.k||'ev',t:e.t+gt(e),m:e.s||'',e:e.e||'',id:e.id,x:!!e.x}));
  const g=f||st.cf;return o.filter(x=>g==='all'||x.k===g).sort((a,b)=>(a.m||'')<(b.m||'')?-1:(a.m||'')>(b.m||'')?1:0)};
 const kfilter=()=>'<div class="tabs">'+[['all','All']].concat(Object.keys(KC).map(k=>[k,KC[k]])).map(a=>'<button class="mini kt'+(st.cf===a[0]?' on':'')+'" data-a="x_cf" data-id="'+a[0]+'">'+(a[0]==='all'?'':'<i class="sw k-'+a[0]+'"></i>')+a[1]+'</button>').join('')+'</div>';
 const rmB=(a,id,t,n,extra)=>'<button class="mini rm" data-a="'+a+'" data-id="'+id+'" data-n="'+esc(n||'')+'"'+(extra||'')+' title="'+t+'" aria-label="'+t+'">✕</button>';
@@ -54,7 +56,11 @@ V.calendar=()=>{const c=d.cal,y=c.getFullYear(),m=c.getMonth(),f=new Date(y,m,1)
  '<div class="schedule-card"><div class="row">'+T('cv',[['month','Month'],['week','Week'],['day','Day'],['list','Agenda']])+'<span><button class="mini" data-a="'+nav+'" data-id="-1">‹</button> <b style="font-family:var(--head)">'+lb+'</b> <button class="mini" data-a="'+nav+'" data-id="1">›</button> <button class="mini" data-a="ct">Today</button></span></div>'+
  kfilter()+b+'</div>'+
  (v==='month'||v==='week'?'<div class="schedule-card"><span class="tag">'+fmt(S0)+'</span>'+itl(d.sel)+'</div>':'')+
- (Q().role==='admin'?'<div class="schedule-card"><span class="tag">Add to calendar · '+fmt(S0)+'</span><form data-f="addEv" class="col"><input type="hidden" name="d" value="'+d.sel+'"><div class="kpick" role="radiogroup" aria-label="Type">'+Object.keys(KC).map((k,i)=>'<label class="kc k-'+k+'"><input type="radio" name="k" value="'+k+'"'+(i?'':' checked')+'><i class="sw k-'+k+'"></i>'+KC[k]+'</label>').join('')+'</div><div class="fr">'+F('t','Title','text','','required maxlength="80"')+F('s','Start (optional)','time','')+F('e','End (optional)','time','')+S('for','For',d.FOR)+'<button class="btn p">Add</button></div></form></div>':'')};
+ (Q().role==='admin'?'<div class="schedule-card"><span class="tag">Add to calendar · '+fmt(S0)+'</span><form data-f="addEv" class="col"><input type="hidden" name="d" value="'+d.sel+'"><div class="kpick" role="radiogroup" aria-label="Type">'+Object.keys(KC).map((k,i)=>'<label class="kc k-'+k+'"><input type="radio" name="k" value="'+k+'"'+(i?'':' checked')+'><i class="sw k-'+k+'"></i>'+KC[k]+'</label>').join('')+'</div><div class="fr">'+F('t','Title','text','','required maxlength="80"')+F('s','Start (optional)','time','')+F('e','End (optional)','time','')+S('for','For',d.FOR,cgd())+'<button class="btn p">Add</button></div></form></div>':'')};
+/* admin: group switcher (All / A1 / A2 / B1 / B2) on top of the calendar; own group glows */
+const ocal=V.calendar;V.calendar=()=>{const q=Q();if(q.role!=='admin')return ocal();const g=cgv();d.vg(g);let o;try{o=ocal()}finally{d.vg(null)}
+ const bar='<div class="schedule-card"><span class="tag">Calendar of</span><div class="tabs">'+[['all','All groups'],['A1','A1'],['A2','A2'],['B1','B1'],['B2','B2']].map(a=>'<button type="button" class="mini'+(g===a[0]?' on':'')+(a[0]===q.g?' gw':'')+'" data-a="x_cg" data-id="'+a[0]+'"'+(a[0]===q.g?' title="Your group"':'')+'>'+a[1]+(a[0]===q.g?' (you)':'')+'</button>').join('')+'</div><p class="cgn">'+(g==='all'?'Showing <b>every group</b>. New events go to everyone unless you pick a group.':'Viewing and editing <b>Group '+g+'</b> (plus section and batch items). New events go to this group.')+'</p></div>',
+ i=o.indexOf('<div class="schedule-card">');return i>-1?o.slice(0,i)+bar+o.slice(i):bar+o};
 
 /* ROUTINE: period grid, labs span their periods, today highlighted */
 const SL=[['09:00','09:45'],['09:45','10:30'],['10:45','11:30'],['11:30','12:15'],['12:15','13:00'],['13:45','14:30'],['14:30','15:15'],['15:15','16:00']],or=V.routine;
@@ -180,13 +186,29 @@ dv.addEventListener('click',async e=>{const b=e.target.closest('[data-a="openF"]
   const blob=await r.blob(),ty=blob.type||'',m=/filename\*=UTF-8''([^;]+)/.exec(r.headers.get('Content-Disposition')||''),name=m?decodeURIComponent(m[1]):'file',url=URL.createObjectURL(blob);
   if(/^(image|video|audio)\//.test(ty))showF(url,ty,name,once);else{const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),6e4)}
  }catch{toast('SERVER OFFLINE')}finally{b.disabled=false;if(once)lc()}});
-const cfl=()=>{const i=$('#cf'),n=$('#cfn'),o=$('#co'),hf=!!(i&&i.files[0]);if(o&&!hf)o.checked=false;const on=!!(o&&o.checked),l=o&&o.closest('label');if(l){l.hidden=!hf;l.classList.toggle('on',on)}if(n)n.textContent=(i&&i.files[0]?i.files[0].name+' ('+fsz(i.files[0].size)+')':'')+(on?(i&&i.files[0]?' · ':'')+'View once is ON':'')};
-dv.addEventListener('change',e=>{if(e.target.id==='cf'||e.target.id==='co')cfl()});
+/* multi-file attach: every pending file has its own view-once eye and a cross to remove it */
+const pend=[],PMAX=10;let pid=0;
+const pthumb=p=>/^image\//.test(p.f.type)?'<img alt="" src="'+(p.u||(p.u=URL.createObjectURL(p.f)))+'">':IC('clip');
+const trayHTML=()=>pend.length?'<div class="ph2"><span class="pn">'+pend.length+' file'+(pend.length>1?'s':'')+' selected · eye = view once · ✕ = remove</span><button type="button" class="mini" data-pa="clr">Remove all</button></div>'+pend.map(p=>'<div class="pc'+(p.once?' once':'')+'"><span class="pth">'+pthumb(p)+'</span><div class="ftx"><b>'+esc(p.f.name)+'</b><small>'+fsz(p.f.size)+(p.once?' · view once':'')+'</small></div><button type="button" class="mini vo'+(p.once?' on':'')+'" data-pa="vo" data-id="'+p.id+'" aria-pressed="'+(p.once?'true':'false')+'" title="View once: each person can open it a single time" aria-label="View once for '+esc(p.f.name)+'">'+IC('eye')+'</button><button type="button" class="mini rm" data-pa="rm" data-id="'+p.id+'" title="Remove this file" aria-label="Remove '+esc(p.f.name)+'">✕</button></div>').join(''):'';
+const ctray=()=>{const t=$('#ctray');if(!t)return;t.innerHTML=trayHTML();t.hidden=!pend.length};
+const pdrop=p=>{const i=pend.indexOf(p);if(i>-1)pend.splice(i,1);if(p.u){URL.revokeObjectURL(p.u);p.u=''}};
+dv.addEventListener('change',e=>{if(e.target.id!=='cf')return;const fs=[...e.target.files];e.target.value='';let big=0,full=0;
+ fs.forEach(f=>{if(f.size>10485760){big++;return}if(pend.some(p=>p.f.name===f.name&&p.f.size===f.size&&p.f.lastModified===f.lastModified))return;if(pend.length>=PMAX){full++;return}pend.push({f,id:++pid,once:false})});
+ if(big)toast(big+' FILE'+(big>1?'S':'')+' OVER 10 MB SKIPPED');else if(full)toast('MAX '+PMAX+' FILES AT ONCE');ctray()});
+dv.addEventListener('click',e=>{const b=e.target.closest('[data-pa]');if(!b)return;e.stopPropagation();const a=b.dataset.pa;
+ if(a==='clr')[...pend].forEach(pdrop);else{const p=pend.find(z=>String(z.id)===b.dataset.id);if(!p)return;if(a==='rm')pdrop(p);else if(a==='vo')p.once=!p.once}ctray()});
+const sendFile=(p,room,t)=>new Promise((res,rej)=>{const fl=p.f,once=p.once,pic=/^image\/(jpeg|png|webp)$/.test(fl.type);
+ const up=(blob,name,ty)=>{if(blob.size>10485760)return rej(Error('Max file size is 10 MB'));
+  fetch('/api/chatfile?room='+encodeURIComponent(room)+'&n='+encodeURIComponent(name)+'&ty='+encodeURIComponent(ty)+'&once='+(once?1:0)+'&t='+encodeURIComponent(t),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/octet-stream'},body:blob})
+   .then(async r=>{if(!r.ok){const j=await r.json().catch(()=>({}));return rej(Error(j.error||'Send failed'))}res()}).catch(()=>rej(Error('Server offline')))};
+ if(pic&&!once)return shrink(fl,640,img=>img?call('POST','/chat',{room,t,img}).then(res).catch(()=>rej(Error('Send failed'))):rej(Error('Could not read photo')));
+ if(pic)return shrinkB(fl,1600,b=>b?up(b,fl.name.replace(/\.\w+$/,'')+'.jpg','image/jpeg'):rej(Error('Could not read photo')));
+ up(fl,fl.name,fl.type||'application/octet-stream')});
 const lc=async()=>{const e=$('#cm');if(!e||d.tab!=='chat')return;try{const m=await call('GET','/chat/'+st.room),near=e.scrollHeight-e.scrollTop-e.clientHeight<80,ad=Q().role==='admin',pn=m.filter(x=>x.pin);
  const pb=$('#pb');if(pb)pb.innerHTML=pn.map(x=>'<div class="pinbar">'+IC('pin')+' <b>'+esc(x.n)+'</b>: '+(x.t?lk(x.t):'photo')+'</div>').join('');
  e.innerHTML=m.map(x=>'<div class="mg'+(x.u===d.user?' me':'')+(x.pin?' pn':'')+'"><small class="by">'+esc(x.n)+(x.a?'<span class="adm">'+(x.a==='cr'?'CR':'ADMIN')+'</span>':'')+' · '+when(x.ts)+(x.pin?' · pinned':'')+'</small>'+(x.t?'<p>'+lk(x.t)+'</p>':'')+(x.img?'<img alt="photo" src="'+x.img+'">':'')+fcard(x)+((ad||x.u===d.user)?'<div class="ma">'+(ad?'<button class="mini" data-a="pinMsg" data-id="'+x.id+'" data-v="'+(x.pin?0:1)+'">'+(x.pin?'Unpin':'Pin')+'</button>':'')+'<button class="mini" data-a="delMsg" data-id="'+x.id+'">Delete</button></div>':'')+'</div>').join('')||E('No messages yet. Say hi.');if(near||!e.dataset.s){e.scrollTop=e.scrollHeight;e.dataset.s=1}}catch(x){}};
 V.chat=()=>{const q=Q(),ad=q.role==='admin',rm=ad?[['U','Whole batch'],['A','Section A'],['B','Section B'],['A1','Group A1'],['A2','Group A2'],['B1','Group B1'],['B2','Group B2']]:[['U','Whole batch'],[q.sec,'Section '+q.sec],[q.g,'Group '+q.g]].filter(r=>r[0]);if(!rm.find(r=>r[0]===st.room))st.room='U';
- return H('Chat','Room messages self-delete after 7 days. Attach any file (up to 10 MB), then tap the eye button to make it view-once: each person can open it only one time (the developer can always open it).'+(ad?' As an admin you can read every room, pin or delete any message and clear a room.':''))+'<div class="schedule-card">'+T('room',rm)+(ad?'<div><button class="mini" data-a="clrRoom">Clear this room</button></div>':'')+'<div id="pb"></div><div id="cm" class="cm">Loading…</div><form data-x="chat" class="fr cmf"><input class="in" name="t" maxlength="500" placeholder="Type a message…" autocomplete="off" style="flex:1"><label class="mini at" style="cursor:pointer" title="Attach any file" aria-label="Attach file">'+IC('clip')+'<input type="file" id="cf" hidden></label><label class="mini vo" hidden title="View once: each person can open it a single time" aria-label="View once"><input type="checkbox" id="co" hidden>'+IC('eye')+'</label><button class="btn p">Send</button></form><small id="cfn" style="color:var(--mut)"></small></div>'};
+ return H('Chat','Messages self-delete after 7 days. Attach several files (10 MB each): the eye makes a file view-once, the ✕ removes it.'+(ad?' As an admin you can read every room, pin or delete any message and clear a room.':''))+'<div class="schedule-card">'+T('room',rm)+(ad?'<div><button class="mini" data-a="clrRoom">Clear this room</button></div>':'')+'<div id="pb"></div><div id="cm" class="cm">Loading…</div><div id="ctray" class="ctray"'+(pend.length?'':' hidden')+'>'+trayHTML()+'</div><form data-x="chat" class="fr cmf"><input class="in" name="t" maxlength="500" placeholder="Type a message…" autocomplete="off" style="flex:1"><label class="mini at" style="cursor:pointer" title="Attach files (you can pick several)" aria-label="Attach files">'+IC('clip')+'<input type="file" id="cf" multiple hidden></label><button class="btn p">Send</button></form></div>'};
 setInterval(()=>{if(!dv.hidden&&d.tab==='chat'&&st.cx!=='polls')lc()},6000);
 
 /* FEEDBACK */
@@ -246,16 +268,16 @@ dv.addEventListener('load',e=>{
 
 /* wiring */
 dv.addEventListener('submit',e=>{const f=e.target.closest('form[data-x]');if(!f)return;e.preventDefault();e.stopImmediatePropagation();const v=Object.fromEntries(new FormData(f)),n=f.dataset.x;
- if(n==='chat'){const fl=$('#cf').files[0],once=!!$('#co')?.checked,t=(v.t||'').trim(),after=()=>{f.reset();cfl();lc()},
-  go=img=>{if(!t&&!img)return;call('POST','/chat',{room:st.room,t:v.t,img}).then(after).catch(()=>{})},
-  up=(blob,name,ty)=>{if(blob.size>10485760)return toast('MAX FILE SIZE IS 10 MB');if(f.dataset.busy)return;f.dataset.busy=1;toast('SENDING…');
-   fetch('/api/chatfile?room='+encodeURIComponent(st.room)+'&n='+encodeURIComponent(name)+'&ty='+encodeURIComponent(ty)+'&once='+(once?1:0)+'&t='+encodeURIComponent(t),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/octet-stream'},body:blob})
-   .then(async r=>{if(!r.ok){const j=await r.json().catch(()=>({}));toast((j.error||'SEND FAILED').toUpperCase());return}after()}).catch(()=>toast('SERVER OFFLINE')).finally(()=>{delete f.dataset.busy})};
-  if(!fl)return go('');
-  const pic=/^image\/(jpeg|png|webp)$/.test(fl.type);
-  if(pic&&!once)return shrink(fl,640,go);
-  if(pic)return shrinkB(fl,1600,b=>b?up(b,fl.name.replace(/\.\w+$/,'')+'.jpg','image/jpeg'):0);
-  up(fl,fl.name,fl.type||'application/octet-stream')}
+ if(n==='chat'){const t=(v.t||'').trim(),room=st.room,tf=f.elements.t;
+  if(!pend.length){if(!t)return;call('POST','/chat',{room,t:v.t}).then(()=>{f.reset();lc()}).catch(()=>{});return}
+  if(f.dataset.busy)return;f.dataset.busy=1;const bt=f.querySelector('.btn');if(bt)bt.disabled=true;
+  (async()=>{const list=[...pend];let sent=0,txt=t,fail='';
+   for(const p of list){toast('SENDING '+(sent+1)+'/'+list.length+'…');
+    try{await sendFile(p,room,txt)}catch(err){fail=(err&&err.message||'Send failed');break}
+    txt='';sent++;pdrop(p);ctray();if(tf&&tf.isConnected)tf.value=''}
+   delete f.dataset.busy;if(bt)bt.disabled=false;
+   if(fail)toast((sent?sent+' SENT · ':'')+fail.toUpperCase()+(list.length-sent?' · '+(list.length-sent)+' LEFT IN LIST':''));else toast(sent>1?sent+' FILES SENT':'SENT');
+   lc()})()}
  else if(n==='node')done(()=>call('POST','/node',v)).then(k=>k&&toast('ADDED'));
  else if(n==='up'){const fl=f.f.files[0];if(!fl)return;toast('UPLOADING…');done(async()=>{const r=await fetch('/api/up?p='+encodeURIComponent(st.rn)+'&n='+encodeURIComponent(fl.name),{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/octet-stream'},body:fl});if(!r.ok){const j=await r.json().catch(()=>({}));toast((j.error||'UPLOAD FAILED').toUpperCase());throw j}}).then(k=>k&&toast('UPLOADED'))}
  else if(n==='gal'){const fl=[...f.f.files].slice(0,6);if(!fl.length)return toast('CHOOSE A PHOTO');toast('UPLOADING…');
