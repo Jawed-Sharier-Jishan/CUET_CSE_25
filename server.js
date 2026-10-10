@@ -27,7 +27,7 @@ const cloudPrivateUrl = (asset, attachment = false) => cloudinary.utils.private_
   resource_type: asset.resourceType || 'raw', type: asset.deliveryType || 'private', expires_at: Math.floor(Date.now() / 1000) + 300, attachment
 });
 const vapidFile = path.join(path.dirname(DB_PATH), 'push-vapid.json');
-const PUSH_DEFAULTS = { notices: true, tests: true, resources: true, polls: true };
+const PUSH_DEFAULTS = { notices: true, tests: true, resources: true, polls: true, chat: true };
 const pushPreferences = uid => { const row = one('SELECT data FROM push_preferences WHERE uid=?', uid); return { ...PUSH_DEFAULTS, ...(row ? JSON.parse(row.data) : {}) }; };
 let vapid;
 if (!!process.env.VAPID_PUBLIC_KEY !== !!process.env.VAPID_PRIVATE_KEY) throw new Error('Set both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY, or leave both unset.');
@@ -47,16 +47,18 @@ const pushAlert = (owner, kind, data, id) => {
   else if (kind === 'cancel' && !data.rm) { title = (data.k === 'Lab' ? 'Lab' : 'Class') + ' cancelled: ' + data.c; body = data.d + ' · ' + data.s + '-' + data.e; }
   else if (kind === 'event' && 'x' in data) { title = (data.x ? 'Cancelled: ' : 'Restored: ') + data.t; body = data.d + (data.s ? ' · ' + data.s : ''); }
   else if (kind === 'node' && data.ty !== 'folder') { title = data.ty === 'link' ? 'New link' : 'New file'; body = data.t; }
+  else if (kind === 'msg') { const sn = one('SELECT name FROM users WHERE id=?', owner); const room = data.r === 'U' ? 'Everyone' : data.r; title = (sn && sn.name || owner) + ' · Chat (' + room + ')'; body = data.img ? (data.t ? '📷 ' + data.t : '📷 Sent a photo') : data.t; }
   else return;
-  const category = ({ notice: 'notices', ct: 'tests', ctstart: 'tests', poll: 'polls', pollres: 'polls', node: 'resources', cancel: 'notices', event: 'notices' })[kind];
+  const category = ({ msg: 'chat', notice: 'notices', ct: 'tests', ctstart: 'tests', poll: 'polls', pollres: 'polls', node: 'resources', cancel: 'notices', event: 'notices' })[kind];
   const target = data.for || 'All';
   const recipients = all_('SELECT id,role FROM users WHERE id<>?', owner).filter(u => {
+    if (kind === 'msg') return roomOk(data.r, u);
     if (target === 'All' || !target) return true;
     const loc = place(u.id);
     return loc.sec === target || loc.g === target;
   }).map(u => u.id).filter(id => pushPreferences(id)[category] !== false);
   if (!recipients.length) return;
-  const payload = JSON.stringify({ title, body: String(body || '').slice(0, 240), id, url: '/' });
+  const payload = JSON.stringify({ title, body: String(body || '').slice(0, 240), id, url: kind === 'msg' ? '/chat' : '/' });
   for (const sub of all_('SELECT endpoint,data FROM push_subscriptions WHERE uid IN (' + recipients.map(() => '?').join(',') + ')', ...recipients)) {
     webpush.sendNotification(JSON.parse(sub.data), payload, { TTL: 86400 }).catch(err => {
       if (err.statusCode === 404 || err.statusCode === 410) run('DELETE FROM push_subscriptions WHERE endpoint=?', sub.endpoint);
@@ -102,8 +104,9 @@ function place(id) {
 }
 const zlib = require('zlib'), UP = path.join(path.dirname(process.env.DB_FILE || path.join(__dirname, 'data.db')), 'uploads'); fs.mkdirSync(UP, { recursive: true });
 const rid = () => crypto.randomBytes(5).toString('hex');
-// Roles: 'student' | 'admin' | 'cr' | 'admin+cr'. Admins and CRs have the same edit rights. Only the creator (2504081) assigns roles; the creator is always an admin.
+// Roles: 'student' | 'admin' | 'cr' | 'admin+cr'. Admins and CRs have the same edit rights. Only the developer (2504081) assigns roles; the developer is always an admin.
 const CID = '2504081', ID_MIN = 1, ID_MAX = 132;
+const devFallbackPhoto = () => ['developer.jpg', 'creator.jpg'].map(f => fs.existsSync(path.join(PUB, f)) ? '/' + f : '').find(Boolean) || '';
 const inRange = id => /^2504\d{3}$/.test(id) && +id.slice(4) >= ID_MIN && +id.slice(4) <= ID_MAX;
 const flags = r => ({ adm: /admin/.test(r || ''), cr: /cr/.test(r || '') });
 const mkRole = (adm, cr) => adm && cr ? 'admin+cr' : adm ? 'admin' : cr ? 'cr' : 'student';
@@ -278,7 +281,7 @@ function state(u) {
   const of = k => items.filter(x => x.kind === k), st = of('settings')[0] || {}, pr = JSON.parse(u.profile || '{}');
   const names = Object.fromEntries(all_('SELECT id,name FROM users').map(x => [x.id, x.name])), att = of('att').filter(a => a.owner === u.id), votes = all_('SELECT * FROM votes');
   const cu = one('SELECT id,name,profile FROM users WHERE id=?', CID), cp = cu ? JSON.parse(cu.profile || '{}') : {};
-  const creator = { id: CID, name: cu ? cu.name : '', reg: !!cu, ...place(CID), photo: cp.photo || (fs.existsSync(path.join(PUB, 'creator.jpg')) ? '/creator.jpg' : ''), fb: cp.fb || '', ig: cp.ig || '', li: cp.li || '', ot: cp.ot || '', school: cp.school || '', college: cp.college || '', dist: cp.dist || '', town: cp.town || '' };
+  const creator = { id: CID, name: cu ? cu.name : '', reg: !!cu, ...place(CID), photo: cp.photo || devFallbackPhoto(), fb: cp.fb || '', ig: cp.ig || '', li: cp.li || '', ot: cp.ot || '', school: cp.school || '', college: cp.college || '', dist: cp.dist || '', town: cp.town || '' };
   const rdRow = all_("SELECT data FROM items WHERE kind='rd' AND owner=?", u.id)[0], rdd = rdRow ? JSON.parse(rdRow.data) : null;
   return { creator, role: isStaff(u) ? 'admin' : 'student', isCreator: u.id === CID, tier: { ...flags(u.id === CID ? mkRole(true, flags(u.role).cr) : u.role) }, read: rdd ? { set: 1, base: rdd.base, ids: rdd.ids } : { set: 0, base: 0, ids: {} }, ...place(u.id), users: all_('SELECT id,name,role,profile FROM users ORDER BY id').map(x => { const q = JSON.parse(x.profile || '{}'); const fl = flags(x.id === CID ? mkRole(true, flags(x.role).cr) : x.role); return { id: x.id, name: x.name, role: x.id === CID || x.role !== 'student' ? 'admin' : 'student', adm: fl.adm, cr: fl.cr, ...place(x.id), fb: q.fb || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '' }; }), profile: { ...pr, name: u.name, email: pr.email || '', phone: pr.phone || '', blood: pr.blood || '', term: st.term || '', aEnd: st.aEnd || 66, bEnd: st.bEnd || 132, ss: st.ss || '', se: st.se || '' },
     courses: of('course').map(c => { const a = att.find(x => x.c === c.id) || {}; return { id: c.id, code: c.code, t: c.t, cr: c.cr, th: c.th, ty: c.ty || '', p: a.p || 0, h: a.h || 0 }; }),
@@ -313,7 +316,12 @@ async function api(req, res, m, p) {
   if (m === 'GET' && p.startsWith('/api/public/user/')) {
     const pid = decodeURIComponent(p.slice('/api/public/user/'.length)), t = one('SELECT id,name,profile FROM users WHERE id=?', pid); if (!t || !inRange(t.id)) throw { code: 404, error: 'Not found' };
     const q = JSON.parse(t.profile || '{}');
-    return send(res, 200, { id: t.id, name: t.name, ...place(t.id), photo: q.photo || '', fb: q.fb || '', ig: q.ig || '', li: q.li || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '' }); }
+    return send(res, 200, { id: t.id, name: t.name, ...place(t.id), photo: q.photo || '', fb: q.fb || '', ig: q.ig || '', li: q.li || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '', email: q.email || '', phone: q.phone || '' }); }
+
+  // public developer card (site developer = roll CID). Email/phone come from the developer's Profile; env vars or the defaults below fill in if the Profile is empty.
+  if (m === 'GET' && p === '/api/developer') {
+    const t = one('SELECT id,name,profile FROM users WHERE id=?', CID), q = t ? JSON.parse(t.profile || '{}') : {}, ph = q.photo || '';
+    return send(res, 200, { id: CID, name: (t && t.name) || '', ...place(CID), photo: ph ? '/api/avatar/' + CID + '?v=' + crypto.createHash('sha1').update(ph).digest('hex').slice(0, 8)   : devFallbackPhoto(), fb: q.fb || '', ig: q.ig || '', li: q.li || '', ot: q.ot || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '', email: q.email || process.env.DEVELOPER_EMAIL || 'u2504081@student.cuet.ac.bd', phone: q.phone || process.env.DEVELOPER_PHONE || '' }); }
 
   if (m === 'GET' && p === '/api/projects') { const names = Object.fromEntries(all_('SELECT id,name FROM users').map(u => [u.id, u.name]));
     return send(res, 200, all_("SELECT * FROM items WHERE kind='project' ORDER BY ts,rowid").map(r => { const d = JSON.parse(r.data); return { t: d.t, c: d.c, s: d.s, d: d.d, y: d.y, u: d.u || '', a: d.a || names[r.owner] || '—' }; })); }
@@ -386,7 +394,7 @@ async function api(req, res, m, p) {
     cur && cur.opt === opt ? run('DELETE FROM votes WHERE poll=? AND uid=?', row.id, u.id) : run('INSERT OR REPLACE INTO votes VALUES(?,?,?)', row.id, u.id, opt); return send(res, 200, { ok: 1 });
   }
   if (m === 'POST' && p === '/api/role') { // only the creator assigns admins and CRs
-    if (auth().id !== CID) throw { code: 403, error: 'Only the site creator can change roles' };
+    if (auth().id !== CID) throw { code: 403, error: 'Only the site developer can change roles' };
     const t = one('SELECT id,role FROM users WHERE id=?', String(b.id)); if (!t) bad('Unknown user'); const f = flags(t.role);
     const adm = t.id === CID ? true : 'adm' in b ? !!b.adm : f.adm, cr = 'cr' in b ? !!b.cr : f.cr;
     run('UPDATE users SET role=? WHERE id=?', mkRole(adm, cr), t.id); return send(res, 200, { ok: 1 });
@@ -428,7 +436,7 @@ async function api(req, res, m, p) {
   if (m === 'POST' && p === '/api/chat') { const u = auth(), r = String(b.room), t = String(b.t || '').trim().slice(0, 500); let img = /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(b.img || '') && b.img.length < 2e5 ? b.img : '', imgAsset;
     if (!roomOk(r, u)) throw { code: 403, error: 'Not your room' }; if (!t && !img) bad('Empty message');
     if (cloudinary && img) { const result = await uploadCloudBuffer(Buffer.from(img.slice(img.indexOf(',') + 1), 'base64'), { folder: 'cuet-cse25/chat', resource_type: 'image' }); imgAsset = cloudAsset(result); img = result.secure_url; }
-    put('msg', u.id, { r, t, img, ...(imgAsset ? { imgAsset } : {}) }); return send(res, 200, { ok: 1 }); }
+    const mid = put('msg', u.id, { r, t, img, ...(imgAsset ? { imgAsset } : {}) }); pushAlert(u.id, 'msg', { r, t, img: !!img }, mid); return send(res, 200, { ok: 1 }); }
   if (m === 'POST' && p === '/api/chatclear') { admin(); const r = String(b.room); if (!ROOMS.includes(r)) bad('Unknown room'); for (const y of all_("SELECT id,data FROM items WHERE kind='msg'")) if (JSON.parse(y.data).r === r) { await deleteCloudAsset(JSON.parse(y.data).imgAsset); run('DELETE FROM items WHERE id=?', y.id); } return send(res, 200, { ok: 1 }); }
   if (m === 'GET' && (x = p.match(/^\/api\/user\/([A-Za-z0-9_-]+)$/))) { const u = auth(), t = one('SELECT id,name,role,profile FROM users WHERE id=?', x[1]); if (!t) throw { code: 404, error: 'Not found' }; const q = JSON.parse(t.profile || '{}'), priv = isStaff(u) || u.id === t.id;
     const fl = flags(t.id === CID ? mkRole(true, flags(t.role).cr) : t.role); return send(res, 200, { id: t.id, name: t.name, role: t.id === CID || t.role !== 'student' ? 'admin' : 'student', adm: fl.adm, cr: fl.cr, creator: t.id === CID, ...place(t.id), photo: q.photo || '', fb: q.fb || '', ig: q.ig || '', li: q.li || '', ot: q.ot || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '', bday: /^\d{4}-\d\d-\d\d$/.test(q.dob || '') ? q.dob.slice(5) : '', ...(priv ? { email: q.email || '', phone: q.phone || '', blood: q.blood || '' } : {}) }); }
@@ -470,7 +478,9 @@ async function handleRequest(req, res) {
   try {
     const p = new URL(req.url, 'http://x').pathname;
     if (p.startsWith('/api/')) return await api(req, res, req.method, p);
-    const f = path.join(PUB, p === '/' ? 'index.html' : decodeURIComponent(p));
+    let f = path.join(PUB, p === '/' ? 'index.html' : decodeURIComponent(p));
+    // clean URLs (/tests, /courses, /developer ...): paths without a file extension that match no real file get the app shell
+    if (!path.extname(p) && (!f.startsWith(PUB) || !fs.existsSync(f) || fs.statSync(f).isDirectory())) f = path.join(PUB, 'index.html');
     if (!f.startsWith(PUB) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('Not found'); }
     if (path.basename(f) === 'index.html') { // fill in absolute URLs for link previews (WhatsApp, Telegram, ...)
       const origin = (process.env.SITE_URL || ((req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim() + '://' + (req.headers['x-forwarded-host'] || req.headers.host || 'localhost'))).replace(/\/+$/, '');

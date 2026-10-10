@@ -32,9 +32,9 @@ The migration script requires an existing `data.db`. If starting with a fresh in
     node server.js          # then open http://localhost:3000
 
 - Database: SQLite file `data.db`, created on first run (back it up to keep your data).
-- Only roll numbers 2504001-2504132 can register or log in. ID 2504081 is the site creator: that account is always an admin.
+- Only roll numbers 2504001-2504132 can register or log in. ID 2504081 is the site developer: that account is always an admin.
 - Only admins can change shared content (routine, courses, CTs, vacations, notices, resources,
-  projects, polls, calendar events, session dates). Admins and CRs have the same edit rights; only the creator (2504081) chooses who is an admin and who is a CR (Classmates tab).
+  projects, polls, calendar events, session dates). Admins and CRs have the same edit rights; only the developer (2504081) chooses who is an admin and who is a CR (Classmates tab).
 - Students can vote in polls and manage only their own data: attendance and profile. The calendar is admin-only: admins add events (for Everyone, a Section or a Group) and students see the ones that apply to them. Personal events created before this change stay visible only to their owner, who can delete them.
 - Passwords are hashed (scrypt). Sessions use an HttpOnly cookie. Login attempts are rate-limited.
 - Hosting: any Node host with a persistent disk works (Render, Railway, Fly.io, a VPS).
@@ -82,7 +82,7 @@ Sound effects now work inside the dashboard (clicks, hover, typing, saved/error 
 - Tests has sub-sections: CT, Quiz, Term final, Summary. Sessional courses show "Quiz" (the old "Lab test" is gone; existing ones become Quiz on startup).
   CT: any number per theory course. Quiz: exactly one per sessional course. Term final: exactly one per theory course (the server enforces this).
 - Admin form is now "Add tests"; the course list follows the chosen type.
-- Feedback shows the site creator (ID 2504081) with a big photo. Name, school/college, hometown and links come from his Profile; the photo is his profile photo, or `public/creator.jpg` if he has not uploaded one.
+- Feedback shows the site developer (ID 2504081) with a big photo. Name, school/college, hometown and links come from his Profile; the photo is his profile photo, or `public/developer.jpg (or the older creator.jpg)` if he has not uploaded one.
 
 ## Round 4 changes
 - Courses (sessional): overview shows Next quiz and Next lab test; the tab is "Quiz & Lab test"; students save their own quiz / lab test marks in the Marks tab.
@@ -90,7 +90,7 @@ Sound effects now work inside the dashboard (clicks, hover, typing, saved/error 
   Rules: CT = theory, many allowed. Quiz = sessional, one per course. Lab test = sessional, many allowed. Term final = theory, one per course.
 - Admin: "Add marks" (under "Add tests") saves a mark for any student ID on any test.
 - No emoji anywhere: all icons are inline SVG (nav, alerts, resources, notices pin, chat attach, password show/hide, top bar).
-- Feedback page order: feedback form (and admin inbox), Class Representatives (all admins, no pictures), then the creator card (smaller photo).
+- Feedback page order: feedback form (and admin inbox), Class Representatives (all admins, no pictures), then the developer card (smaller photo).
 
 ## Round 5 changes
 - Greeting: "Good Afternoon" now starts at 1 PM (12:00-12:59 still says Good Morning).
@@ -108,7 +108,7 @@ Sound effects now work inside the dashboard (clicks, hover, typing, saved/error 
 - Sidebar title is now "Dashboard". Navigation order: Home, Calendar, Vacation, Routine, Courses, Tests, Resources, Notices, Chat, Polls, Alerts, Classmates, Projects, Gallery, Feedback, Profile.
 - Calendar: the colour legend is gone (the type selector already shows the colours).
 - Tests > Summary: two separate parts, "CT summary" (theory courses) and "Quiz summary" (sessional courses, Total 1 / Done / Left). No status boxes and no term final summary.
-- Roles: the creator (2504081, always an admin) picks admins and CRs in Classmates and can remove either at any time. Admins and CRs both get full edit access. Nobody else can change roles. Chat messages carry an ADMIN or CR tag.
+- Roles: the developer (2504081, always an admin) picks admins and CRs in Classmates and can remove either at any time. Admins and CRs both get full edit access. Nobody else can change roles. Chat messages carry an ADMIN or CR tag.
 - Feedback: the Class Representatives box lists only the CRs, with new wording. Anonymous feedback shows as "Anonymous" in the inbox.
 - Alerts: read/unread marks are saved on the account (not in the browser), so the bell number is the same on every device. Your own notices, tests, files and polls no longer count as unread alerts for you.
 - Gallery (new): shared photo wall with albums, captions and a full-screen viewer (arrow keys / Esc). Any student can add photos (JPEG, shrunk in the browser, up to 6 at a time, 3 MB each, 400 photos total); owners and admins can delete. Photos are stored in the `uploads/` folder, so back it up with `data.db`.
@@ -125,3 +125,9 @@ Sound effects now work inside the dashboard (clicks, hover, typing, saved/error 
 - Gallery layout (public page and dashboard): 4 photos per row, extra photos wrap onto new rows (2 per row on phones).
 - Students: search box (name or ID) above a 3-profile slideshow ordered by ID. The middle profile is larger; arrows (and swipe, or arrow keys) move it right to left or back, it loops, and it advances by itself every few seconds (pauses on hover, while searching, or if the visitor prefers reduced motion). Click a side profile to bring it to the middle, click the middle one to open its dossier. Searching shows only the matching student(s) with no slideshow; clearing the box brings the slideshow back. The group filter buttons still work.
 
+
+## Clean URLs (no #)
+Dashboard pages live at real paths: `/home /calendar /courses /tests /resources /notices /chat /classmates /projects /gallery /feedback /profile /members`.
+The public site uses `/students /projects /gallery /about /contact /developer` (these scroll to the section). Old `#/cts`-style links are converted automatically.
+`server.js` returns the app for any path without a file extension; for Firebase Hosting `firebase.json` has the matching `**` -> `/index.html` rewrite.
+Developer card (Contact area, `/developer`): shows the Profile of roll 2504081. Phone/email come from that Profile; if empty, set `DEVELOPER_PHONE` / `DEVELOPER_EMAIL` env vars.
