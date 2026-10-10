@@ -1211,6 +1211,13 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
  .mact>a.mini{margin-right:auto}
  .mact{gap:6px}.mact .mini{padding:8px 9px;font-size:11px;letter-spacing:.06em}
 }
+/* classmate details on phone: photo at left; details sit beside it when they fit the gap, otherwise drop below it (photo stays left) */
+@media(max-width:600px){
+ .dcard{justify-content:flex-start;text-align:left;align-items:flex-start;gap:12px 14px}
+ .dcard .dp{margin:0}
+ .dcard>div:last-child{flex:0 1 auto;width:auto;min-width:0;max-width:100%}
+ .dcard dd{overflow-wrap:anywhere}
+}
 </style>
 </head>
 <body>
