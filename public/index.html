@@ -1218,6 +1218,32 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
  .dcard>div:last-child{flex:0 1 auto;width:auto;min-width:0;max-width:100%}
  .dcard dd{overflow-wrap:anywhere}
 }
+
+/* ===== phone fixes: calendar toolbar, day-item tags, date/time fields ===== */
+.fl{align-content:start;grid-template-rows:auto auto}
+.fl .fln{display:block;line-height:1.4;min-height:1.4em;overflow-wrap:anywhere}
+.dash-content input[type=date].in,.dash-content input[type=time].in,.dash-content input[type=month].in{-webkit-appearance:none;appearance:none;display:block;box-sizing:border-box;width:100%;max-width:100%;min-width:0;height:40px;min-height:40px;line-height:20px;margin:0;overflow:hidden;text-align:left}
+.dash-content input[type=date].in::-webkit-date-and-time-value,.dash-content input[type=time].in::-webkit-date-and-time-value{text-align:left;min-height:1.2em;margin:0;padding:0}
+.dash-content input[type=date].in::-webkit-datetime-edit,.dash-content input[type=time].in::-webkit-datetime-edit{padding:0;line-height:20px}
+.dash-content input[type=date].in::-webkit-calendar-picker-indicator,.dash-content input[type=time].in::-webkit-calendar-picker-indicator{margin:0 0 0 4px;padding:0;opacity:.8;filter:invert(.8)}
+.class-item.it{align-items:flex-start;gap:10px}
+.class-item.it>div:first-child{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
+.class-item.it>.row.ia{flex:none;flex-direction:column;align-items:flex-end;justify-content:flex-start;gap:6px;margin-left:auto;max-width:55%}
+.class-item.it>.row.ia .pill{align-self:flex-end;margin:0}
+.class-item.it .ab{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}
+@media(max-width:700px){
+ #dashView .class-item.it{flex-wrap:nowrap}
+ #dashView .class-item.it>div:first-child{flex:1 1 0}
+ #dashView .class-item.it>.row.ia{flex:none;flex-direction:column;align-items:flex-end;justify-content:flex-start;margin-left:auto}
+}
+.calnav{display:inline-flex;align-items:center;gap:6px;flex-wrap:nowrap}
+@media(max-width:600px){
+ #dashView .schedule-card>.row:has(.calnav){flex-direction:column;align-items:stretch;gap:10px}
+ #dashView .calnav{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:6px;width:100%}
+ #dashView .calnav .callb{text-align:center;min-width:0;overflow-wrap:anywhere;font-size:13px}
+ #dashView .calnav .mini{min-height:34px;min-width:34px;display:inline-flex;align-items:center;justify-content:center;padding:6px 10px}
+ #dashView .calnav .calt{justify-self:end}
+}
 </style>
 </head>
 <body>
@@ -2071,8 +2097,8 @@ const cname=c=>{const x=db.courses.find(y=>y.code===c);return esc(c)+(x?' • '+
 const dayInfo=d=>{const w=d.getDay(),s=iso(d),off=w>4?'Weekend':(db.vac.find(v=>s>=v.f&&s<=v.to)||{}).t;
  return{off,list:off?[]:db.routine.filter(r=>r.d===w&&mine(r)).sort((a,b)=>a.s<b.s?-1:1).map(r=>{const z=(db.cancels||[]).find(c=>c.d===s&&c.rid===r.id);return z?{...r,xid:z.id,rm:z.rm?1:0}:r}).filter(r=>!r.rm)}};
 const X=(a,id)=>'<button class="x" data-a="'+a+'" data-id="'+id+'" aria-label="Delete">×</button>';
-const F=(n,l,t,v,x)=>'<label class="fl">'+l+'<input class="in" name="'+n+'" type="'+(t||'text')+'" value="'+esc(v)+'" '+(x||'')+'></label>';
-const S=(n,l,o,v)=>'<label class="fl">'+l+'<select class="in" name="'+n+'">'+o.map(x=>'<option value="'+esc(x[0])+'"'+(String(x[0])===String(v)?' selected':'')+'>'+esc(x[1])+'</option>').join('')+'</select></label>';
+const F=(n,l,t,v,x)=>'<label class="fl"><span class="fln">'+l+'</span><input class="in" name="'+n+'" type="'+(t||'text')+'" value="'+esc(v)+'" '+(x||'')+'></label>';
+const S=(n,l,o,v)=>'<label class="fl"><span class="fln">'+l+'</span><select class="in" name="'+n+'">'+o.map(x=>'<option value="'+esc(x[0])+'"'+(String(x[0])===String(v)?' selected':'')+'>'+esc(x[1])+'</option>').join('')+'</select></label>';
 const cOpts=()=>db.courses.map(c=>[c.code,c.code+' — '+c.t]);
 const H=(t,s)=>'<div class="hd"><div><span class="tag">'+t+'</span><p>'+s+'</p></div></div>';
 const E=t=>'<p class="empty">'+t+'</p>';
