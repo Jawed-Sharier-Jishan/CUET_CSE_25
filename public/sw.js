@@ -1,9 +1,10 @@
-const CACHE = 'cuet-cse25-shell-v19-chat-files';
+const CACHE = 'cuet-cse25-shell-v20-phone-fix';
 const RESOURCE_CACHE = 'cuet-cse25-saved-resources-v1';
-const SHELL = ['/', '/manifest.webmanifest', '/x.js', '/app.js', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
+const SHELL = ['/', '/manifest.webmanifest', '/x.js', '/icon-180.png', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)));
+  // add files one by one: a single missing file must never make the whole update fail (that left phones stuck on old code)
+  event.waitUntil(caches.open(CACHE).then(cache => Promise.all(SHELL.map(u => cache.add(new Request(u, { cache: 'reload' })).catch(() => {})))));
   self.skipWaiting();
 });
 
@@ -28,10 +29,11 @@ self.addEventListener('fetch', event => {
     }).catch(() => caches.match(request).then(cached => cached || caches.match('/'))));
     return;
   }
-  event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {
-    if (response.ok) caches.open(CACHE).then(cache => cache.put(request, response.clone()));
+  // network first, cache only when offline: phones always get the latest x.js / icons
+  event.respondWith(fetch(request).then(response => {
+    if (response.ok) { const copy = response.clone(); caches.open(CACHE).then(cache => cache.put(request, copy)); }
     return response;
-  })));
+  }).catch(() => caches.match(request).then(cached => cached || Response.error())));
 });
 
 self.addEventListener('message', event => {

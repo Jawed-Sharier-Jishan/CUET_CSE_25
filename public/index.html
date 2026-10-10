@@ -539,7 +539,7 @@ a.card:hover, .sc:hover, .dev:hover {
 .dev dd a { color: var(--acc); text-decoration: none; }
 .dev dd a:hover, .dev dd a:focus-visible { text-decoration: underline; }
 .dev .dl2 { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
-@media (max-width: 700px) { .dev { grid-template-columns: 1fr; text-align: left; padding: 20px; } .dev .dp { max-width: 220px; } }
+@media (max-width: 700px) { .dev { grid-template-columns: 1fr; text-align: left; padding: 20px; justify-items: center; } .dev > div { width: 100%; } .dev .dp { max-width: 220px; width: 100%; margin: 0 auto; } }
 
 /* students search + slideshow */
 .ssearch { display: flex; gap: 10px; margin: 20px 0 6px; max-width: 460px; }
@@ -1138,6 +1138,10 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
 .mav{position:relative;overflow:hidden}.mav img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%}
 .fcard{display:flex;align-items:center;gap:10px;margin-top:4px;padding:8px 10px;border:1px dashed var(--line);min-width:200px}.fcard.once{border-color:var(--acc)}.fcard .fic{font-size:20px}.fcard .ftx{flex:1;min-width:0}.fcard .ftx b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 #fv{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.88);display:grid;place-items:center;padding:12px}.fvb{max-width:96vw;max-height:94vh;display:flex;flex-direction:column;gap:8px;color:#fff}.fvh{display:flex;gap:8px;align-items:center}.fvh span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fvc{overflow:auto;display:grid;place-items:center}.fvc img,.fvc video{max-width:94vw;max-height:80vh;-webkit-user-select:none;user-select:none}
+.cmf{display:flex!important;flex-wrap:nowrap;align-items:center;gap:6px}.cmf .in{flex:1 1 auto;min-width:0}.cmf .mini{flex:none;width:36px;height:36px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer}.cmf .mini .ic{width:18px;height:18px}.cmf .btn{flex:none;min-height:36px;padding:0 14px}.cmf .mini.on{background:var(--acc);color:var(--accfg)}
+#dashView .dash-content form.cmf{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;width:100%}#dashView .dash-content form.cmf>*{width:auto;max-width:none;min-width:0}#dashView .dash-content form.cmf>.in{flex:1 1 auto;width:auto}#dashView .dash-content form.cmf>.mini{flex:none;width:36px;min-width:36px}#dashView .dash-content form.cmf .btn{width:auto;min-height:36px}
+@media(max-width:700px){#dashView .class-item{flex-wrap:wrap;gap:8px}#dashView .class-item>.row{flex-wrap:wrap;justify-content:flex-start;max-width:100%}#dashView .class-item .mini{min-height:34px;padding:6px 12px}#dashView .class-item .mini.rm{min-width:34px}}
+@media(max-width:600px){.dcard{justify-content:center;text-align:center}.dcard .dp{margin:0 auto}.dcard>div:last-child{width:100%;text-align:left}}
 .mrow .class-title{cursor:pointer}.mrow.on{border-color:var(--acc)}.mrow[hidden]{display:none}
 .dq{width:100%;box-sizing:border-box;padding:10px 12px;margin-bottom:6px;font:14px var(--mono);color:var(--fg);background:var(--card);border:1px solid var(--line);outline:0}.dq:focus{border-color:var(--acc)}
 .dcard dd a{color:var(--acc);text-decoration:none}.dcard dd a:hover{text-decoration:underline}
@@ -1864,7 +1868,7 @@ $('#dsnd').addEventListener('click',()=>toast('SOUND: '+($('#snd').getAttribute(
 </script>
 
 <script>(function(){var c=document.getElementById("cube");if(c)c.insertAdjacentHTML("beforeend","<i class=\"core\"></i>")})()</script>
-<script>if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));</script>
+<script>if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost'))addEventListener('load',()=>{var had=!!navigator.serviceWorker.controller,rl=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!rl){rl=true;location.reload()}});navigator.serviceWorker.register('/sw.js').then(r=>r.update()).catch(()=>{})});</script>
 
 <script>
 (function(){
