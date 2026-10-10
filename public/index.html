@@ -1244,6 +1244,20 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
  #dashView .calnav .mini{min-height:34px;min-width:34px;display:inline-flex;align-items:center;justify-content:center;padding:6px 10px}
  #dashView .calnav .calt{justify-self:end}
 }
+
+/* ===== iPhone notch / home-screen app: keep headers clear of the status bar =====
+   env(safe-area-inset-top) is 0 in a normal browser tab, so browsers look unchanged. */
+nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.dash-header{height:calc(64px + env(safe-area-inset-top,0px));padding-top:env(safe-area-inset-top,0px)}
+#cp{top:calc(66px + env(safe-area-inset-top,0px))}
+@media(max-width:1024px){
+ #dashView .dash-sidebar{padding-top:calc(20px + env(safe-area-inset-top,0px));padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+ #dashView.nav-c .dash-sidebar{padding-top:calc(20px + env(safe-area-inset-top,0px))}
+}
+@media(max-width:600px){
+ #dashView .dash-header{height:auto;min-height:calc(58px + env(safe-area-inset-top,0px));padding-top:calc(8px + env(safe-area-inset-top,0px))}
+ #dashView .dash-content{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+}
 </style>
 </head>
 <body>
@@ -1832,15 +1846,6 @@ const hl=$('#hl');
 function startLogo(){if(hl.classList.contains('go'))return;hl.classList.add('go');if(RM)return;
 setTimeout(function g(){window.__muteUntil=performance.now()+1000;hl.classList.add('gl');setTimeout(()=>hl.classList.remove('gl'),380);setTimeout(g,10000+Math.random()*6000)},3600)}
 if(!RM&&FINE){let px=0,py=0,pending=false;const clamp=v=>Math.max(-1,Math.min(1,v));addEventListener('pointermove',e=>{if(mainPortal.hidden)return;px=e.clientX;py=e.clientY;if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;const r=hl.getBoundingClientRect();if(r.width&&r.height){hl.style.setProperty('--ry',(clamp((px-r.left-r.width/2)/(r.width*.5))*12)+'deg');hl.style.setProperty('--rx',(-clamp((py-r.top-r.height/2)/(r.height*.5))*10)+'deg')}})},{passive:true});addEventListener('blur',()=>{hl.style.setProperty('--ry','0deg');hl.style.setProperty('--rx','0deg')})}
-if(matchMedia('(pointer:coarse)').matches||matchMedia('(max-width:768px)').matches){
- const Orientation=window.DeviceOrientationEvent,Motion=window.DeviceMotionEvent,clamp=v=>Math.max(-1,Math.min(1,v)),angleDiff=(a,b)=>((a-b+540)%360)-180;let listening=false,gotOrientation=false,orientationActive=false,baseB=null,baseG=null,lastB=null,lastG=null,baseX=null,baseY=null;
- hl.title='Tap to enable motion tilt';
- const applyTilt=(horizontal,vertical)=>{const a=((screen.orientation&&screen.orientation.angle)||window.orientation||0)%360;let x=horizontal,y=vertical;if(a===90){x=vertical;y=-horizontal}else if(a===270||a===-90){x=-vertical;y=horizontal}else if(a===180){x=-horizontal;y=-vertical}hl.style.setProperty('--ry',(clamp(x/14)*32)+'deg');hl.style.setProperty('--rx',(-clamp(y/14)*32)+'deg')};
- const orient=e=>{if(mainPortal.hidden||e.beta==null||e.gamma==null)return;gotOrientation=true;if(baseB===null){baseB=e.beta;baseG=e.gamma;lastB=e.beta;lastG=e.gamma;return}const b=angleDiff(e.beta,baseB),g=angleDiff(e.gamma,baseG);if(Math.abs(angleDiff(e.beta,lastB))+Math.abs(angleDiff(e.gamma,lastG))>.6)orientationActive=true;lastB=e.beta;lastG=e.gamma;applyTilt(g,b)};
- const move=e=>{if(mainPortal.hidden||orientationActive)return;const a=e.accelerationIncludingGravity;if(!a||a.x==null||a.y==null||a.z==null)return;if(baseX===null){baseX=a.x;baseY=a.y;return}applyTilt((a.x-baseX)*4,(a.y-baseY)*4)};
- const enableMotion=async()=>{if(listening)return;if(!isSecureContext){toast('MOTION NEEDS HTTPS');return}if(!Orientation&&!Motion){toast('PHONE MOTION SENSOR UNAVAILABLE');return}try{const asks=[];if(Orientation&&typeof Orientation.requestPermission==='function')asks.push(Orientation.requestPermission());if(Motion&&typeof Motion.requestPermission==='function')asks.push(Motion.requestPermission());const permissions=await Promise.all(asks);if(permissions.length&&permissions.every(x=>x!=='granted')){toast('MOTION ACCESS DENIED');return}listening=true;if(Orientation)addEventListener('deviceorientation',orient,{passive:true});if(Motion)addEventListener('devicemotion',move,{passive:true});toast('TILT YOUR PHONE TO MOVE THE LOGO');setTimeout(()=>{if(!gotOrientation&&baseX===null){listening=false;if(Orientation)removeEventListener('deviceorientation',orient);if(Motion)removeEventListener('devicemotion',move);toast('NO MOTION DATA — CHECK HTTPS AND SENSOR PERMISSION')}},2200)}catch(e){listening=false;toast('MOTION ACCESS UNAVAILABLE')}};
- hl.addEventListener('click',enableMotion);
-}
 /* boot sequence, once per session */
 (function(){let seen;try{seen=sessionStorage.getItem('boot')}catch(e){}if(seen||RM){startLogo();return}
 const b=D.createElement('div');b.id='boot';b.innerHTML='<pre id="bt"></pre>';B.appendChild(b);
