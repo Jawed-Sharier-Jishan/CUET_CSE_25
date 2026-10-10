@@ -58,7 +58,10 @@ V.calendar=()=>{const c=d.cal,y=c.getFullYear(),m=c.getMonth(),f=new Date(y,m,1)
  (v==='month'||v==='week'?'<div class="schedule-card"><span class="tag">'+fmt(S0)+'</span>'+itl(d.sel)+'</div>':'')+
  (Q().role==='admin'?'<div class="schedule-card"><span class="tag">Add to calendar · '+fmt(S0)+'</span><form data-f="addEv" class="col"><input type="hidden" name="d" value="'+d.sel+'"><div class="kpick" role="radiogroup" aria-label="Type">'+Object.keys(KC).map((k,i)=>'<label class="kc k-'+k+'"><input type="radio" name="k" value="'+k+'"'+(i?'':' checked')+'><i class="sw k-'+k+'"></i>'+KC[k]+'</label>').join('')+'</div><div class="fr">'+F('t','Title','text','','required maxlength="80"')+F('s','Start (optional)','time','')+F('e','End (optional)','time','')+S('for','For',d.FOR,cgd())+'<button class="btn p">Add</button></div></form></div>':'')};
 /* admin: group switcher (All / A1 / A2 / B1 / B2) on top of the calendar; own group glows */
-const ocal=V.calendar;V.calendar=()=>{const q=Q();if(q.role!=='admin')return ocal();const g=cgv();d.vg(g);let o;try{o=ocal()}finally{d.vg(null)}
+const dayItems=()=>its(d.sel,'all').filter(z=>z.k!=='hol');
+const ocal=V.calendar;V.calendar=()=>{const q=Q();if(q.role!=='admin')return ocal();const g=cgv();d.vg(g);let o,di=[];try{o=ocal();di=dayItems()}finally{d.vg(null)}
+ const live=di.filter(z=>!z.x).length,dayBar=di.length?'<div class="schedule-card"><span class="tag">Whole day · '+fmt(pd(d.sel))+'</span><p class="cgn">'+di.length+' item'+(di.length>1?'s':'')+' on this day for '+(g==='all'?'<b>all groups</b>':'<b>Group '+g+'</b>')+'. Vacations are not touched.</p><div class="row" style="justify-content:flex-start;gap:8px;flex-wrap:wrap"><button type="button" class="mini" data-a="z_dayall" data-m="cancel"'+(live?'':' disabled')+'>Cancel all ('+live+')</button><button type="button" class="mini rm" data-a="z_dayall" data-m="remove">Remove all ('+di.length+')</button></div></div>':'';
+ const ai=o.indexOf('<span class="tag">Add to calendar'),ci=ai>-1?o.lastIndexOf('<div class="schedule-card">',ai):-1;if(ci>-1)o=o.slice(0,ci)+dayBar+o.slice(ci);else o+=dayBar;
  const bar='<div class="schedule-card"><span class="tag">Calendar of</span><div class="tabs">'+[['all','All groups'],['A1','A1'],['A2','A2'],['B1','B1'],['B2','B2']].map(a=>'<button type="button" class="mini'+(g===a[0]?' on':'')+(a[0]===q.g?' gw':'')+'" data-a="x_cg" data-id="'+a[0]+'"'+(a[0]===q.g?' title="Your group"':'')+'>'+a[1]+(a[0]===q.g?' (you)':'')+'</button>').join('')+'</div><p class="cgn">'+(g==='all'?'Showing <b>every group</b>. New events go to everyone unless you pick a group.':'Viewing and editing <b>Group '+g+'</b> (plus section and batch items). New events go to this group.')+'</p></div>',
  i=o.indexOf('<div class="schedule-card">');return i>-1?o.slice(0,i)+bar+o.slice(i):bar+o};
 
@@ -289,7 +292,16 @@ dv.addEventListener('submit',e=>{const f=e.target.closest('form[data-x]');if(!f)
  else if(n==='prof'){if(st.ph)v.photo=st.ph;done(()=>call('PUT','/profile2',v)).then(k=>k&&(st.ph='',toast('DETAILS SAVED')))}
  else if(n==='pw'){if(v.n!==v.n2)return toast('PASSWORDS DO NOT MATCH');call('POST','/password',{o:v.o,n:v.n}).then(()=>{f.reset();toast('PASSWORD CHANGED')}).catch(()=>{})}},true);
 dv.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,id=b.dataset.id;
- if(a==='z_cx'){const on=+b.dataset.v;if(!on||confirm('Cancel this? Students will get an alert.'))done(()=>call('PATCH','/items/'+id,{x:on})).then(k=>k&&toast(on?'CANCELLED — STUDENTS NOTIFIED':'RESTORED'))}
+ if(a==='z_dayall'){if(b.disabled)return;const m=b.dataset.m,day=d.sel;let it=[];d.vg(cgv());try{it=dayItems()}finally{d.vg(null)}
+  const rm=m==='remove',todo=rm?it:it.filter(z=>!z.x);if(!todo.length)return;
+  if(!confirm((rm?'Remove ALL '+todo.length+' item(s)':'Cancel '+todo.length+' item(s)')+' on '+day+' for '+(cgv()==='all'?'all groups':'Group '+cgv())+'?'+(rm?' They are deleted for everyone, with no undo.':' Students will get an alert for each one.')))return;
+  done(async()=>{let ok=0,bad=0;for(const z of todo){try{
+    if(z.rid)await call('POST','/cancel',rm?{d:day,rid:z.rid,rm:1}:{d:day,rid:z.rid});
+    else if(z.cid)await(rm?call('DELETE','/items/'+z.cid):call('PATCH','/items/'+z.cid,{x:1}));
+    else if(z.id)await(rm?call('DELETE','/items/'+z.id):call('PATCH','/items/'+z.id,{x:1}));
+    else continue;ok++}catch(err){bad++}}
+   toast((rm?'REMOVED ':'CANCELLED ')+ok+(bad?' · '+bad+' FAILED':''))})}
+ else if(a==='z_cx'){const on=+b.dataset.v;if(!on||confirm('Cancel this? Students will get an alert.'))done(()=>call('PATCH','/items/'+id,{x:on})).then(k=>k&&toast(on?'CANCELLED — STUDENTS NOTIFIED':'RESTORED'))}
  else if(a==='z_xcls'){if(confirm('Cancel '+(b.dataset.n||'this class')+' on '+b.dataset.d+'? Students will get an alert.'))done(()=>call('POST','/cancel',{d:b.dataset.d,rid:id})).then(k=>k&&toast('CLASS CANCELLED — STUDENTS NOTIFIED'))}
  else if(a==='z_xrm'){if(confirm('Remove '+(b.dataset.n||'this class')+' on '+b.dataset.d+' from the calendar? It will disappear for everyone, including you, with no alert and no undo.'))done(()=>call('POST','/cancel',{d:b.dataset.d,rid:id,rm:1})).then(k=>k&&toast('CLASS REMOVED FOR THIS DATE'))}
  else if(a==='z_rmct'){if(confirm('Remove "'+(b.dataset.n||'this test')+'" from the calendar? The test is deleted for everyone, with no undo.'))done(()=>call('DELETE','/items/'+id)).then(k=>k&&toast('TEST REMOVED'))}
