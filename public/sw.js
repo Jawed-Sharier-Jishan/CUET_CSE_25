@@ -1,4 +1,4 @@
-const CACHE = 'cuet-cse25-shell-v18-chat-alerts';
+const CACHE = 'cuet-cse25-shell-v19-chat-files';
 const RESOURCE_CACHE = 'cuet-cse25-saved-resources-v1';
 const SHELL = ['/', '/manifest.webmanifest', '/x.js', '/app.js', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 
