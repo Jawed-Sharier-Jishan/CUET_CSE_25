@@ -1,4 +1,4 @@
-const CACHE = 'cuet-cse25-shell-v16-app';
+const CACHE = 'cuet-cse25-shell-v18-chat-alerts';
 const RESOURCE_CACHE = 'cuet-cse25-saved-resources-v1';
 const SHELL = ['/', '/manifest.webmanifest', '/x.js', '/app.js', '/icon-180.png', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png'];
 
@@ -53,13 +53,19 @@ self.addEventListener('message', event => {
 self.addEventListener('push', event => {
   let message = {};
   try { message = event.data ? event.data.json() : {}; } catch { message = { body: event.data?.text() || '' }; }
-  event.waitUntil(self.registration.showNotification(message.title || 'CUET CSE 25 alert', {
+  event.waitUntil((async () => {
+    if (message.url === '/chat') { // don't buzz while the person is already looking at the chat
+      const seen = (await clients.matchAll({ type: 'window', includeUncontrolled: true })).some(c => c.visibilityState === 'visible' && c.focused && new URL(c.url).pathname === '/chat');
+      if (seen) return;
+    }
+    await self.registration.showNotification(message.title || 'CUET CSE 25 alert', {
     body: message.body || 'You have a new alert.',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     tag: message.id ? 'cse25-' + message.id : 'cse25-alert',
     data: { url: message.url || '/' }
-  }));
+    });
+  })());
 });
 
 self.addEventListener('notificationclick', event => {
@@ -69,10 +75,10 @@ self.addEventListener('notificationclick', event => {
     for (const client of windows) {
       if ('focus' in client) {
         await client.focus();
-        client.postMessage({ type: 'OPEN_ALERTS' });
+        client.postMessage({ type: 'OPEN_ALERTS', url: event.notification.data && event.notification.data.url });
         return;
       }
     }
-    await clients.openWindow('/?openAlerts=1');
+    await clients.openWindow(event.notification.data && event.notification.data.url === '/chat' ? '/chat' : '/?openAlerts=1');
   })());
 });

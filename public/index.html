@@ -462,7 +462,7 @@ input[type=search]:focus, input[type=text]:focus, input[type=password]:focus {
 .card::after {
   content: ""; position: absolute; bottom: 0; right: 0; width: 6px; height: 6px; border-bottom: 2px solid var(--acc2); border-right: 2px solid var(--acc2);
 }
-a.card:hover, .sc:hover {
+a.card:hover, .sc:hover, .dev:hover {
   transform: translateY(-4px) scale(1.01);
   border-color: var(--acc);
   box-shadow: 0 0 25px var(--acc-glow), inset 0 0 15px color-mix(in srgb, var(--acc) 10%, transparent);
@@ -523,6 +523,23 @@ a.card:hover, .sc:hover {
 #plb img { display:block; width:auto; height:auto; max-width:100%; max-height: min(72vh,calc(100dvh - 150px)); object-fit: contain; border: 1px solid var(--acc); }
 #plb p { color: #fff; font-size: 12px; margin: 0; }
 #plb .pbn { display: flex; gap: 8px; flex-wrap:wrap; justify-content:center; }
+
+/* developer card (same card effects as students / projects / gallery) */
+.dev { display: grid; grid-template-columns: minmax(150px, 230px) 1fr; gap: 28px; align-items: center; padding: 28px; margin-top: 28px; }
+.dev .dp { aspect-ratio: 1; position: relative; overflow: hidden; display: grid; place-items: center; font: 700 clamp(40px, 7vw, 72px) var(--head); color: var(--acc); text-shadow: 0 0 10px var(--acc-glow); border: 1px solid var(--line); background: radial-gradient(circle at center, color-mix(in srgb, var(--acc) 20%, transparent), transparent 70%); }
+.dev .dp::after { content: ""; position: absolute; inset: 2px; border: 1px dashed rgba(0,240,255,.3); pointer-events: none; }
+.dev .dp img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
+.dev:hover .dp { border-color: var(--acc); box-shadow: 0 0 18px var(--acc-glow); }
+.dev:hover .dp img { transform: scale(1.06); }
+.dev h3 { margin: 4px 0 2px; font-size: clamp(22px, 3.4vw, 32px); color: var(--fg); text-shadow: 0 0 12px var(--acc-glow); overflow-wrap: anywhere; }
+.dev .sub { color: var(--mut); font-size: 12px; margin: 0 0 14px; }
+.dev dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 20px; margin: 0; font-size: 13px; }
+.dev dt { color: var(--mut); }
+.dev dd { margin: 0; color: var(--fg); overflow-wrap: anywhere; }
+.dev dd a { color: var(--acc); text-decoration: none; }
+.dev dd a:hover, .dev dd a:focus-visible { text-decoration: underline; }
+.dev .dl2 { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+@media (max-width: 700px) { .dev { grid-template-columns: 1fr; text-align: left; padding: 20px; } .dev .dp { max-width: 220px; } }
 
 /* students search + slideshow */
 .ssearch { display: flex; gap: 10px; margin: 20px 0 6px; max-width: 460px; }
@@ -684,7 +701,7 @@ html.od{--acc:#ffe600;--acc-glow:rgba(255,230,0,.6);--acc2:#00ff9c;--acc2-glow:r
 @keyframes profile-slices{0%,100%{opacity:0}12%,28%,43%{opacity:.7;background-position:0 0}16%{background-position:0 8px}32%{background-position:0 -7px}47%{opacity:.3;background-position:0 4px}58%{opacity:0}}
 @keyframes profile-name{0%,18%{text-shadow:3px 0 var(--acc2),-3px 0 var(--acc);transform:translate(2px,0) translateZ(18px);clip-path:inset(0 0 45% 0)}36%{text-shadow:-2px 0 var(--acc2),2px 0 var(--acc);transform:translate(-2px,0) translateZ(18px);clip-path:inset(45% 0 0 0)}55%,100%{text-shadow:0 0 12px var(--acc-glow);transform:translateZ(18px);clip-path:inset(0)}}
 .db dl{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;text-align:left;margin:18px 0 0;font-size:13px}
-.db dt{color:var(--mut)}.db dd{margin:0;color:var(--fg)}
+.db dt{color:var(--mut)}.db dd{margin:0;color:var(--fg);overflow-wrap:anywhere}.db dd a{color:var(--acc);text-decoration:none}.db dd a:hover,.db dd a:focus-visible{text-decoration:underline}
 .dlinks{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px}
 @media (max-width:720px){#hud{display:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.js .reveal{opacity:1!important;transform:none!important}#bg-canvas,.orb{display:none}}
@@ -970,6 +987,7 @@ h2{animation:none}
 .x:hover{color:var(--acc2);border-color:var(--acc2)}
 .mini{background:none;border:1px solid var(--line);color:var(--acc);padding:4px 10px;cursor:pointer;font:10px var(--head);letter-spacing:.1em;text-transform:uppercase}
 .mini:hover{background:var(--acc);color:var(--accfg)}
+.mini.rm:hover,.mini.rm:focus-visible{background:#e5333f;border-color:#e5333f;color:#fff;box-shadow:0 0 12px rgba(229,51,63,.55)}
 .pill.on{border-color:var(--acc);color:var(--acc)}
 .pill.dn{border-color:var(--mut);color:var(--mut);box-shadow:none}
 .class-item.live{border-color:var(--acc);box-shadow:0 0 12px var(--acc-glow)}
@@ -1029,11 +1047,12 @@ h2{animation:none}
 }
 @media(max-width:600px){
  #dashView .dash-header{height:auto;min-height:58px;padding:8px 10px;gap:8px;flex-wrap:wrap}
- #dashView .dash-header>div:nth-child(2){order:1;flex:1 1 calc(100% - 46px);margin:0 0 0 8px!important;min-width:0}
+ #dashView .dash-header>div:nth-child(2){order:1;flex:1 1 0;margin:0 0 0 4px!important;min-width:0;text-align:left}
+ #dashView .dash-header #navToggle{flex:none}
  #dashView .dash-header>div:last-child{order:2;flex:1 1 100%;justify-content:flex-end;margin-bottom:5px}
  #dashView .dash-header #navToggle{order:0}
  #dashView .dash-header>div:last-child{gap:7px!important}
- #dashView .dash-header #dashDate{display:block;font-size:9px!important;white-space:normal;line-height:1.5;margin-top:8px}
+ #dashView .dash-header #dashDate{display:block;font-size:9px!important;white-space:normal;line-height:1.5;margin-top:2px}
  #dashView .dash-header #dashWelcome{font-size:14px!important;line-height:1.3}
  #dashView .dash-header #dashUserTag{display:inline!important;font-size:9px!important;white-space:nowrap}
  #dashView .dash-header .dash-actions{gap:7px!important;min-width:0;flex:1 1 100%;justify-content:flex-end;flex-wrap:wrap}
@@ -1116,32 +1135,60 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
 /* classmate detail */
 .dcard{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}.dcard .dp{width:120px;height:150px;flex:none;border:1px solid var(--acc);background:var(--card) center/cover no-repeat;display:grid;place-items:center;font:900 48px var(--head);color:var(--acc)}
 .dcard dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:12px}.dcard dt{color:var(--mut)}.dcard dd{margin:0}
-.mrow .class-title{cursor:pointer}.mrow.on{border-color:var(--acc)}
+.mrow .class-title{cursor:pointer}.mrow.on{border-color:var(--acc)}.mrow[hidden]{display:none}
+.dq{width:100%;box-sizing:border-box;padding:10px 12px;margin-bottom:6px;font:14px var(--mono);color:var(--fg);background:var(--card);border:1px solid var(--line);outline:0}.dq:focus{border-color:var(--acc)}
+.dcard dd a{color:var(--acc);text-decoration:none}.dcard dd a:hover{text-decoration:underline}
+/* classmate rows */
+.mrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;transition:border-color .2s,transform .2s,box-shadow .2s}
+.mrow:hover{border-color:var(--acc)}
+.mmain{display:flex;align-items:center;gap:12px;flex:1;min-width:0;cursor:pointer}
+.mav{width:42px;height:42px;flex:none;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);color:var(--acc);font:700 16px var(--head);background:color-mix(in srgb,var(--acc) 8%,transparent);transition:border-color .2s,box-shadow .2s}
+.mrow:hover .mav{border-color:var(--acc);box-shadow:0 0 10px var(--acc-glow)}
+.mtx{min-width:0;flex:1}.mtx small{display:block;color:var(--mut);overflow-wrap:anywhere;line-height:1.5}
+.mgo{color:var(--mut);font-size:22px;line-height:1;transition:transform .2s,color .2s}.mrow:hover .mgo{color:var(--acc);transform:translateX(3px)}
+.mact{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.mnm{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:2px}
+/* role tags: same box as the .mini buttons, shown beside the name */
+.mrow .pill{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:28px;padding:4px 12px;font-size:11px;line-height:1;margin:0;white-space:nowrap}
+.mrow .mini{box-sizing:border-box;min-height:28px;display:inline-flex;align-items:center;justify-content:center}
+#dd,.mrow{scroll-margin-top:90px}
+/* your own row: highlighted + gently pulsing */
+.mrow.me{border-color:var(--acc);background:linear-gradient(100deg,color-mix(in srgb,var(--acc) 15%,transparent),transparent 75%);box-shadow:inset 3px 0 0 var(--acc),0 0 16px color-mix(in srgb,var(--acc) 30%,transparent);animation:mepulse 2.8s ease-in-out infinite}
+.mrow.me .mav{background:var(--acc);color:var(--accfg);border-color:var(--acc);box-shadow:0 0 14px var(--acc-glow)}
+.mrow.me .class-title{color:var(--acc);text-shadow:0 0 10px var(--acc-glow)}
+@keyframes mepulse{50%{box-shadow:inset 3px 0 0 var(--acc),0 0 28px color-mix(in srgb,var(--acc) 50%,transparent)}}
+@media(max-width:600px){
+ .mrow{flex-direction:column;align-items:stretch;gap:10px;padding:12px}
+ .mmain{min-height:48px}
+ .mact{padding-top:10px;border-top:1px dashed var(--line)}
+ .mact .mini,.mrow .pill{min-height:36px;padding:8px 12px;font-size:12px}
+ .dq{font-size:16px}
+}
 .fbq{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 </style>
 </head>
 <body>
-<script>document.documentElement.classList.add("js");setTimeout(function(){var h=document.getElementById("hl");if(h)h.classList.add("go")},7000)</script>
+<script>(function(){var h=location.hash;if(!h||h.length<2)return;var m=h.match(/^#\/(\w+)/),p=null;if(m)p="/"+(m[1]==="cts"?"tests":m[1]==="directory"?"classmates":m[1]);else if(/^#(students|projects|gallery|about|contact|developer)$/.test(h))p="/"+h.slice(1);else if(h==="#top")p="/";if(p!==null)try{history.replaceState(history.state,"",p+location.search)}catch(e){}})();document.documentElement.classList.add("js");setTimeout(function(){var h=document.getElementById("hl");if(h)h.classList.add("go")},7000)</script>
 
 <canvas id="bg-canvas"></canvas>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="logo" viewBox="0 0 240 180"><path fill="currentColor" d="M18.4 50Q16.1 50 14.2 48.9Q12.4 47.8 11.2 45.9Q10.1 44 10.1 41.7V18Q10.1 15.7 11.2 13.8Q12.4 11.9 14.2 10.8Q16.1 9.7 18.4 9.7H50.3V18.4H20.6Q19.8 18.4 19.3 18.9Q18.8 19.3 18.8 20.3V39.4Q18.8 40.3 19.3 40.8Q19.8 41.3 20.6 41.3H50.3V50ZM69.9 170V136.5Q69.9 131.7 72 127.7Q74.1 123.8 77.4 121.5Q80.8 119.1 85 119.1H127.3Q127.3 119.1 127.3 119.1Q127.3 119.1 127.3 119.1V102Q127.3 102 127.3 102Q127.3 102 127.3 102H85.8Q85.8 102 85.8 102Q85.8 102 85.8 102V108.9H69.9V101Q69.9 96.1 72 92.2Q74.1 88.3 77.4 85.9Q80.8 83.6 85 83.6H128Q132.2 83.6 135.6 86Q139 88.3 141.1 92.2Q143.2 96.2 143.2 101V120.1Q143.2 124.9 141.1 128.8Q139 132.8 135.6 135.2Q132.2 137.6 128 137.6H85.8Q85.8 137.6 85.8 137.6Q85.8 137.6 85.8 137.6V151.6Q85.8 151.6 85.8 151.6Q85.8 151.6 85.8 151.6H143.2V170ZM171 170Q166.8 170 163.4 167.6Q160.1 165.2 158 161.3Q155.9 157.3 155.9 152.6V145.9H171.8V151.6Q171.8 151.6 171.8 151.6Q171.8 151.6 171.8 151.6H213.3Q213.3 151.6 213.3 151.6Q213.3 151.6 213.3 151.6V135.4Q213.3 135.4 213.3 135.4Q213.3 135.4 213.3 135.4H155.9V83.6H229.2V102H171.8Q171.8 102 171.8 102Q171.8 102 171.8 102V117Q171.8 117 171.8 117Q171.8 117 171.8 117H214Q218.2 117 221.6 119.3Q225 121.6 227.1 125.6Q229.2 129.6 229.2 134.4V152.6Q229.2 157.3 227.1 161.3Q218.2 170 214 170H171Z"/><path style="fill:var(--fg)" d="M78.1 50Q75.9 50 74 48.9Q72.1 47.8 71 45.9Q69.8 44 69.8 41.7V9.7H78.5V41.3Q78.5 41.3 78.5 41.3Q78.5 41.3 78.5 41.3H101.4Q101.4 41.3 101.4 41.3Q101.4 41.3 101.4 41.3V9.7H110.2V41.7Q110.2 44 109 45.9Q107.9 47.8 106 48.9Q104.1 50 101.9 50H78.1ZM131.8 50V9.7H169V18.4H140.6V25.5H163.5V34.2H140.6V41.3H169V50ZM205.7 50V18.4H189.9V9.7H230.2V18.4H214.4V50ZM18.1 110Q15.9 110 14 108.9Q12.1 107.8 11 105.9Q9.8 104 9.8 101.7V98H18.5V101.3Q18.5 101.3 18.5 101.3Q18.5 101.3 18.5 101.3H41.4Q41.4 101.3 41.4 101.3Q41.4 101.3 41.4 101.3V94.2Q41.4 94.2 41.4 94.2Q41.4 94.2 41.4 94.2H18.1Q15.9 94.2 14 93.1Q12.1 92 11 90.1Q9.8 88.2 9.8 85.9V78Q9.8 75.7 11 73.8Q12.1 71.9 14 70.8Q15.9 69.7 18.1 69.7H41.9Q44.1 69.7 46 70.8Q47.9 71.9 49 73.8Q50.2 75.7 50.2 78V81.7H41.4V78.4Q41.4 78.4 41.4 78.4Q41.4 78.4 41.4 78.4H18.5Q18.5 78.4 18.5 78.4Q18.5 78.4 18.5 78.4V85.5Q18.5 85.5 18.5 85.5Q18.5 85.5 18.5 85.5H41.9Q44.1 85.5 46 86.6Q47.9 87.7 49 89.6Q50.2 91.5 50.2 93.8V101.7Q50.2 104 49 105.9Q47.9 107.8 46 108.9Q44.1 110 41.9 110ZM11.8 170V129.7H49V138.4H20.6V145.5H43.5V154.2H20.6V161.3H49V170Z"/></symbol></svg>
 
 <div id="mainPortal">
-<a class="skip" href="#students">Skip to content</a>
+<a class="skip" href="/students">Skip to content</a>
 
 <nav>
  <div class="scroll-progress" id="sp"></div>
  <div class="wrap">
-  <a class="brand" href="#top" aria-label="CUET CSE '25 home">
+  <a class="brand" href="/" aria-label="CUET CSE '25 home">
     <svg class="logo" role="img" aria-hidden="true"><use href="#logo"/></svg>
   </a>
   <div class="links" id="links">
-   <a href="#students">Students</a>
-   <a href="#projects">Projects</a>
-   <a href="#gallery">Gallery</a>
-   <a href="#about">About</a>
-   <a href="#contact">Contact</a>
+   <a href="/students">Students</a>
+   <a href="/projects">Projects</a>
+   <a href="/gallery">Gallery</a>
+   <a href="/about">About</a>
+   <a href="/contact">Contact</a>
    <button class="ib" id="cl" aria-label="Accent color" title="Accent color"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/></svg></button>
    <button class="ib" id="fx" aria-label="Cycle background effect" title="Background effect"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 12h16M12 4v16"/></svg></button>
    <button class="ib" id="snd" aria-pressed="true" aria-label="Toggle audio interface" title="Audio Stream"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 010 7"/></svg></button>
@@ -1163,8 +1210,8 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
    <div class="typed" id="ty" aria-hidden="true"></div>
    <h1 class="sr">CUET CSE '25</h1>
    <p>The centralized website of Computer Science &amp; Engineering Batch 2025 at Chittagong University of Engineering &amp; Technology. Building what comes next, together.</p>
-   <a class="btn p" href="#students">Browse students</a>
-   <a class="btn" href="#projects">View projects</a>
+   <a class="btn p" href="/students">Browse students</a>
+   <a class="btn" href="/projects">View projects</a>
   </div>
   <div class="side reveal">
   <div class="scene" id="scene" title="Drag to manipulate holographic core"><div class="cube" id="cube"><div>CSE</div><div>'25</div><div>CUET</div><div>&lt;/&gt;</div><div>01</div><div>10</div></div></div>
@@ -1247,7 +1294,17 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
   <p>Questions, collaborations, or want your project featured? Reach out to the batch representatives.</p>
   <p>Write to us at <a href="mailto:u2504081@student.cuet.ac.bd">u2504081@student.cuet.ac.bd</a></p>
   <a class="btn p" href="mailto:u2504081@student.cuet.ac.bd" title="u2504081@student.cuet.ac.bd">Send us an email</a>
-  <a class="btn" href="#top">Back to top ↑</a>
+  <a class="btn" href="/developer">Developer</a>
+  <a class="btn" href="/">Back to top ↑</a>
+ </div>
+</section>
+
+<section id="developer">
+ <div class="wrap reveal">
+  <span class="tag">Developer</span>
+  <h2>Developer</h2>
+  <p>The student who designed, built and maintains this website.</p>
+  <article class="card dev" id="devCard" aria-live="polite"></article>
  </div>
 </section>
 </main>
@@ -1265,19 +1322,19 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
  <aside class="dash-sidebar" id="dashSide">
   <div class="brand"><svg class="logo" role="img" aria-hidden="true"><use href="#logo"/></svg><span>Dashboard</span></div>
   <nav class="dash-nav" aria-label="Dashboard">
-   <a href="#" class="dash-link" data-v="home" title="Home" aria-label="Home"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg><span class="nl">Home</span></a>
-   <a href="#" class="dash-link" data-v="calendar" title="Calendar" aria-label="Calendar"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><span class="nl">Calendar</span></a>
-   <a href="#" class="dash-link" data-v="courses" title="Courses" aria-label="Courses"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z"/><path d="M4 19V5"/><path d="M9 7h6"/></svg><span class="nl">Courses</span></a>
-   <a href="#" class="dash-link" data-v="cts" title="Tests" aria-label="Tests"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 13l2 2 4-4"/></svg><span class="nl">Tests</span></a>
-   <a href="#" class="dash-link" data-v="resources" title="Resources" aria-label="Resources"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a2 2 0 012-2h4l2 2h8a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span class="nl">Resources</span></a>
-   <a href="#" class="dash-link" data-v="notices" title="Notices" aria-label="Notices"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4h3l7 4V6L6 10z"/><path d="M17 8a5 5 0 010 8"/></svg><span class="nl">Notices</span></a>
-   <a href="#" class="dash-link" data-v="chat" title="Chat" aria-label="Chat"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span class="nl">Chat</span></a>
-   <a href="#" class="dash-link" data-v="directory" title="Classmates" aria-label="Classmates"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 5a3.5 3.5 0 010 6M18 14a6 6 0 013.5 6"/></svg><span class="nl">Classmates</span></a>
-   <a href="#" class="dash-link" data-v="projects" title="Projects" aria-label="Projects"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg><span class="nl">Projects</span></a>
-   <a href="#" class="dash-link" data-v="gallery" title="Gallery" aria-label="Gallery"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg><span class="nl">Gallery</span></a>
-   <a href="#" class="dash-link" data-v="feedback" title="Feedback" aria-label="Feedback"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><span class="nl">Feedback</span></a>
-   <a href="#" class="dash-link" data-v="profile" title="Profile" aria-label="Profile"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg><span class="nl">Profile</span></a>
-   <a href="#" class="dash-link" id="navMembers" data-v="members" hidden title="Members" aria-label="Members"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span class="nl">Members</span></a>
+   <a href="/home" class="dash-link" data-v="home" title="Home" aria-label="Home"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg><span class="nl">Home</span></a>
+   <a href="/calendar" class="dash-link" data-v="calendar" title="Calendar" aria-label="Calendar"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><span class="nl">Calendar</span></a>
+   <a href="/courses" class="dash-link" data-v="courses" title="Courses" aria-label="Courses"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2z"/><path d="M4 19V5"/><path d="M9 7h6"/></svg><span class="nl">Courses</span></a>
+   <a href="/tests" class="dash-link" data-v="cts" title="Tests" aria-label="Tests"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6l1 2h3v15H5V6h3z"/><path d="M9 13l2 2 4-4"/></svg><span class="nl">Tests</span></a>
+   <a href="/resources" class="dash-link" data-v="resources" title="Resources" aria-label="Resources"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6a2 2 0 012-2h4l2 2h8a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg><span class="nl">Resources</span></a>
+   <a href="/notices" class="dash-link" data-v="notices" title="Notices" aria-label="Notices"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10v4h3l7 4V6L6 10z"/><path d="M17 8a5 5 0 010 8"/></svg><span class="nl">Notices</span></a>
+   <a href="/chat" class="dash-link" data-v="chat" title="Chat" aria-label="Chat"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span class="nl">Chat</span></a>
+   <a href="/classmates" class="dash-link" data-v="directory" title="Classmates" aria-label="Classmates"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 5a3.5 3.5 0 010 6M18 14a6 6 0 013.5 6"/></svg><span class="nl">Classmates</span></a>
+   <a href="/projects" class="dash-link" data-v="projects" title="Projects" aria-label="Projects"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg><span class="nl">Projects</span></a>
+   <a href="/gallery" class="dash-link" data-v="gallery" title="Gallery" aria-label="Gallery"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg><span class="nl">Gallery</span></a>
+   <a href="/feedback" class="dash-link" data-v="feedback" title="Feedback" aria-label="Feedback"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg><span class="nl">Feedback</span></a>
+   <a href="/profile" class="dash-link" data-v="profile" title="Profile" aria-label="Profile"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg><span class="nl">Profile</span></a>
+   <a href="/members" class="dash-link" id="navMembers" data-v="members" hidden title="Members" aria-label="Members"><svg class="ni" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span class="nl">Members</span></a>
   </nav>
   <div class="dash-foot" style="font-size:9px;color:var(--mut);border-top:1px solid var(--line);padding-top:12px">CUET CSE Dept.<br>22.46° N, 91.97° E</div>
  </aside>
@@ -1314,7 +1371,7 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
     <label class="remember-me">
      <input type="checkbox" id="rememberMe"> Remember terminal
     </label>
-    <a href="#" id="forgotPass" style="font-size:11px; color:var(--acc);">Forgot?</a>
+    <a href="/" id="forgotPass" style="font-size:11px; color:var(--acc);">Forgot?</a>
    </div>
    <div style="margin-top: 24px; text-align: right;">
     <button type="button" class="btn" id="loginCancel">Cancel</button>
@@ -1332,7 +1389,7 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
 (function() {
   var sp = document.getElementById('sp');
   var navLinks = document.querySelectorAll('.links a');
-  var sections = document.querySelectorAll('section, header');
+  var sections = document.querySelectorAll('#mainPortal section, #mainPortal header');
   var reveals = document.querySelectorAll('.reveal');
 
   function onScroll() {
@@ -1352,24 +1409,40 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
       }
     });
 
-    // Active Navigation Highlight
+    // Active Navigation Highlight (Developer sits under Contact)
     var current = '';
-    sections.forEach(function(sec) {
+    if (!document.getElementById('mainPortal').hidden) sections.forEach(function(sec) {
       var top = sec.offsetTop - 100;
       if (scrollTop >= top) {
         current = sec.getAttribute('id');
       }
     });
 
+    var hl = current === 'developer' ? 'contact' : current;
     navLinks.forEach(function(a) {
       a.classList.remove('active');
-      if (a.getAttribute('href') === '#' + current) {
+      if (a.getAttribute('href') === '/' + hl) {
         a.classList.add('active');
       }
     });
+    return current;
   }
 
-  window.addEventListener('scroll', onScroll, { passive: true });
+  // keep the address bar on the section being viewed (/students, /gallery ...), without adding history entries
+  var pt = 0;
+  function syncPath(id) {
+    if (document.getElementById('mainPortal').hidden) return;
+    var p = (!id || id === 'top') ? '/' : '/' + id;
+    if (p === location.pathname) return;
+    try { history.replaceState(history.state, '', p + location.search); } catch (e) {}
+  }
+  function onUserScroll() {
+    onScroll();
+    clearTimeout(pt);
+    pt = setTimeout(function() { syncPath(onScroll()); }, 180); // recomputed when the timer fires, so a stale position never reaches the URL
+  }
+
+  window.addEventListener('scroll', onUserScroll, { passive: true });
   onScroll();
 })();
 
@@ -1387,7 +1460,29 @@ var PROJECTS=[
 ];
 
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+/* contact links: email -> mailto, phone -> WhatsApp (wa.me); 01XXXXXXXXX is read as a Bangladesh number */
+function waNum(p){var raw=String(p||'').trim(),d=raw.replace(/\D/g,'');if(!d)return'';if(raw.charAt(0)!=='+'){if(d.indexOf('00')===0)d=d.slice(2);else if(/^0\d{10}$/.test(d))d='880'+d.slice(1);else if(/^1\d{9}$/.test(d))d='880'+d}return d.length>=8&&d.length<=15?d:''}
+function mailHtml(e){e=String(e||'').trim();return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)?'<a href="mailto:'+esc(e)+'" title="Send an email">'+esc(e)+'</a>':(e?esc(e):'')}
+function phoneHtml(p){p=String(p||'').trim();if(!p)return'';var n=waNum(p);return n?'<a href="https://wa.me/'+n+'" target="_blank" rel="noopener noreferrer" title="Chat on WhatsApp">'+esc(p)+' ↗</a>':esc(p)}
 function ini(n){return n.split(/\s+/).map(function(w){return w[0]}).slice(0,2).join("").toUpperCase()}
+
+/* clean URLs for the public site: /students /projects /gallery /about /contact /developer (no # anywhere) */
+(function(){
+ var SECS=["students","projects","gallery","about","contact","developer"],portal=document.getElementById("mainPortal"),moved=false;
+ function secFor(path){var k=String(path||"").replace(/^\/+|\/+$/g,"");return k===""?"top":SECS.indexOf(k)>-1?k:null}
+ function goSec(path,smooth){var id=secFor(path),el=id&&document.getElementById(id);if(!el)return false;el.scrollIntoView({behavior:smooth?"smooth":"auto",block:"start"});return true}
+ document.addEventListener("click",function(e){
+  var a=e.target.closest&&e.target.closest("#mainPortal a[href^='/']");if(!a||e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||a.target==="_blank")return;
+  var u=new URL(a.href,location.href);if(u.origin!==location.origin||secFor(u.pathname)===null)return;
+  e.preventDefault();if(u.pathname!==location.pathname){try{history.pushState(null,"",u.pathname)}catch(x){}}goSec(u.pathname,true)});
+ addEventListener("popstate",function(){if(!portal.hidden)goSec(location.pathname,false)});
+ ["wheel","touchstart","keydown","mousedown"].forEach(function(t){addEventListener(t,function(){moved=true},{passive:true,once:true})});
+ /* opening /gallery directly: land on the section, then re-align while images/data load and the page height settles */
+ function deep(){if(portal.hidden||location.pathname==="/")return;var n=0;(function again(){if(moved||n>3)return;goSec(location.pathname,false);n++;setTimeout(again,n===1?500:1200)})()}
+ if(document.readyState==="complete")deep();else addEventListener("load",deep);
+ /* back to the public site (logout / Home button): drop dashboard paths such as /tests */
+ new MutationObserver(function(){if(portal.hidden)return;try{history.replaceState(null,"","/")}catch(x){}scrollTo(0,0)}).observe(portal,{attributes:true,attributeFilter:["hidden"]});
+})();
 
 var gf="",sg=document.getElementById("sg"),sIdx=0,sTimer=null,sHold=false;
 function sList(){return STUDENTS.slice().sort(function(a,b){return String(a.r).localeCompare(String(b.r))}).filter(function(s){return !gf||s.g===gf||s.sec===gf})}
@@ -1607,6 +1702,7 @@ function syncViews(){
 }
 
 function openLogin(){ loginModal.hidden = false; $('#loginUser').focus(); }
+window.openLogin = openLogin;
 function closeLogin(){ loginModal.hidden = true; loginForm.reset(); }
 
 loginBtn.addEventListener('click', ()=>{
@@ -1740,7 +1836,7 @@ function fillDossier(z){
   $('#dr').textContent=(id?'ID '+id:'')+(z.sec?' · Section '+z.sec+(z.g?' · Group '+z.g:''):'');
   if(z.photo){dav.style.backgroundImage='url('+z.photo+')';dav.textContent=''}else{dav.style.backgroundImage='';dav.textContent=(z.ini||ini(name||'?'))}
   const town=[z.town,z.dist].filter(Boolean).join(', ');
-  $('#ddl').innerHTML='<dt>Hometown</dt><dd>'+esc(town||'—')+'</dd><dt>School</dt><dd>'+esc(z.school||'—')+'</dd><dt>College</dt><dd>'+esc(z.college||'—')+'</dd>';
+  $('#ddl').innerHTML='<dt>Email</dt><dd>'+(mailHtml(z.email)||'—')+'</dd><dt>Phone</dt><dd>'+(phoneHtml(z.phone)||'—')+'</dd><dt>Hometown</dt><dd>'+esc(town||'—')+'</dd><dt>School</dt><dd>'+esc(z.school||'—')+'</dd><dt>College</dt><dd>'+esc(z.college||'—')+'</dd>';
   const L=[['Facebook',z.fb],['Instagram',z.ig],['LinkedIn',z.li]].filter(x=>hrefOk(x[1]));
   $('#dlinks').innerHTML=L.map(x=>'<a class="mini" href="'+esc(x[1])+'" target="_blank" rel="noopener noreferrer">'+x[0]+' ↗</a>').join('');
 }
@@ -1903,7 +1999,8 @@ const toast=t=>{const e=D.getElementById('toast');if(!e)return;e.textContent='> 
 const snd=n=>{try{window.S[n]()}catch(e){}};
 let user=null,db=null,tab='home',cal=day0(),sel=iso(day0()),rf='';
 try{tab=localStorage.getItem(K+'tab')||'home'}catch(e){}
-const hm0=location.hash.match(/^#\/(\w+)/);if(hm0)tab=hm0[1];let ni=0;const sc={};try{if(history.state&&history.state.i)ni=history.state.i}catch(e){}
+const DT=['home','calendar','courses','cts','resources','notices','chat','directory','projects','gallery','feedback','profile','members','polls','vacation','routine','alerts'],SLG={cts:'tests',directory:'classmates'},UNS={tests:'cts',classmates:'directory'},slug=t=>SLG[t]||t,pathTab=()=>{const m=location.pathname.match(/^\/([\w-]+)\/?$/);if(!m)return null;const t=UNS[m[1]]||m[1];return DT.includes(t)?t:null};
+const hm0=pathTab();if(hm0&&(sessionStorage.getItem('currentUser')||!/^(projects|gallery)$/.test(hm0)))tab=hm0;let ni=0;const sc={};try{if(history.state&&history.state.i)ni=history.state.i}catch(e){}
 async function call(m,p,b){let r;try{r=await fetch('/api'+p,{method:m,credentials:'same-origin',headers:{'Content-Type':'application/json'},body:b?JSON.stringify(b):undefined})}catch(e){toast('SERVER OFFLINE');throw e}
  const j=await r.json().catch(()=>({}));
  if(r.status===401&&p!=='/login'&&p!=='/register'){sessionStorage.removeItem('currentUser');location.reload();throw j}
@@ -1937,9 +2034,9 @@ V.home=()=>{const t=day0(),ss=pd(db.profile.ss),se=pd(db.profile.se),tot=Math.ma
  const ups=db.cts.filter(c=>mine(c)&&!c.done&&diff(c.d)>=0).sort((a,b)=>a.d<b.d?-1:1).slice(0,3);
  return '<div class="dash-progress-card"><div class="progress-bar-container"><div class="row" style="font-size:11px"><span style="color:#fff;font-weight:700">Academic Progress: '+esc(db.profile.term)+'</span><span style="color:var(--acc)">Week '+wk+' of '+Math.ceil(tot/7)+'</span></div><div class="progress-bar"><div class="progress-fill" style="width:'+pct.toFixed(1)+'%"></div></div></div>'+ '<div style="text-align:right;border-left:1px solid var(--line);padding-left:20px"><div style="font-size:10px;color:var(--mut)">Academic Session</div><div style="color:#fff;font-size:12px;font-weight:700">'+pd(db.profile.ss).getDate()+' '+MN[ss.getMonth()]+' '+ss.getFullYear()+' – '+se.getDate()+' '+MN[se.getMonth()]+' '+se.getFullYear()+'</div><div style="font-size:10px;color:var(--acc2)">'+left+' days remaining</div></div></div>'+
  '<div class="dash-grid"><div class="schedule-card"><span class="tag">Today\'s Classes &amp; Labs</span>'+dayList(t,1)+'</div><div class="schedule-card"><span class="tag">Tomorrow\'s Classes &amp; Labs</span>'+dayList(add(t,1))+'</div>'+
- '<div class="col"><div class="schedule-card"><span class="tag">Latest Notice</span>'+(nt?'<b style="color:#fff">'+esc(nt.t)+'</b><p style="font-size:12px;margin:0">'+esc(nt.b)+'</p><a href="#" data-v="notices" class="dash-link" style="padding:0;border:0;color:var(--acc);text-decoration:underline">All notices →</a>':E('No notices yet.'))+'</div>'+
- '<div class="schedule-card"><span class="tag">Upcoming tests</span>'+(ups.length?ups.map(c=>'<div class="row" style="font-size:12px"><span>'+esc(c.c)+' • '+esc(c.ty||'CT')+' • '+esc(c.t)+'</span><span style="color:var(--acc2)">'+rel(c.d)+'</span></div>').join(''):E('No tests scheduled.'))+'<a href="#" data-v="cts" class="dash-link" style="padding:0;border:0;color:var(--acc);text-decoration:underline">Open tests →</a></div>'+
- '<div class="schedule-card"><span class="tag">Next 5 Days</span><div class="five-day-grid">'+n5+'</div><a href="#" data-v="calendar" class="dash-link" style="padding:0;border:0;color:var(--acc);text-decoration:underline">Open calendar →</a></div></div></div>'};
+ '<div class="col"><div class="schedule-card"><span class="tag">Latest Notice</span>'+(nt?'<b style="color:#fff">'+esc(nt.t)+'</b><p style="font-size:12px;margin:0">'+esc(nt.b)+'</p><a href="/notices" data-v="notices" class="dash-link" style="padding:0;border:0;color:var(--acc);text-decoration:underline">All notices →</a>':E('No notices yet.'))+'</div>'+
+ '<div class="schedule-card"><span class="tag">Upcoming tests</span>'+(ups.length?ups.map(c=>'<div class="row" style="font-size:12px"><span>'+esc(c.c)+' • '+esc(c.ty||'CT')+' • '+esc(c.t)+'</span><span style="color:var(--acc2)">'+rel(c.d)+'</span></div>').join(''):E('No tests scheduled.'))+'<a href="/tests" data-v="cts" class="dash-link" style="padding:0;border:0;color:var(--acc);text-decoration:underline">Open tests →</a></div>'+
+ '<div class="schedule-card"><span class="tag">Next 5 Days</span><div class="five-day-grid">'+n5+'</div><a href="/calendar" data-v="calendar" class="dash-link" style="padding:0;border:0;color:var(--acc);text-decoration:underline">Open calendar →</a></div></div></div>'};
 
 V.calendar=()=>{const y=cal.getFullYear(),m=cal.getMonth(),f=new Date(y,m,1).getDay(),n=new Date(y,m+1,0).getDate(),ts=iso(day0());
  let c=DN.map(d=>'<div class="dh">'+d+'</div>').join('')+'<div></div>'.repeat(f);
@@ -1992,7 +2089,7 @@ V.polls=()=>H('Polls','Vote (you can change your vote). Results are stored in th
  '<div class="schedule-card"><span class="tag">Create poll</span><form data-f="addPoll" class="col"><label class="fl">Question<input class="in" name="q" required maxlength="120"></label><label class="fl">Options (one per line, at least 2)<textarea class="in" name="o" rows="3" required></textarea></label><div><button class="btn p">Create</button></div></form></div>';
 
 V.profile=()=>{const p=db.profile;
- return H('Profile','Student ID: '+esc(user)+' · '+(db.isCreator?'Creator':db.tier&&db.tier.cr&&db.tier.adm?'Admin · CR':db.tier&&db.tier.cr?'CR':db.role==='admin'?'Admin':'Student')+(db.sec?' · Section '+db.sec+', Group '+db.g:' · no section (ID is not 2504xxx)')+'')+
+ return H('Profile','Student ID: '+esc(user)+' · '+(db.isCreator?'Developer':db.tier&&db.tier.cr&&db.tier.adm?'Admin · CR':db.tier&&db.tier.cr?'CR':db.role==='admin'?'Admin':'Student')+(db.sec?' · Section '+db.sec+', Group '+db.g:' · no section (ID is not 2504xxx)')+'')+
  '<div class="schedule-card"><form data-f="saveProfile" class="col"><div class="fr">'+F('name','Full name','text',p.name,'maxlength="60"')+F('email','Email','email',p.email)+F('phone','Phone','tel',p.phone)+S('blood','Blood group',[['','—'],'A+','A-','B+','B-','AB+','AB-','O+','O-'].map(x=>Array.isArray(x)?x:[x,x]),p.blood)+'</div>'+
  '<div class="fr">'+F('term','Level / Term','text',p.term,'maxlength="30"')+'</div><div><button class="btn p">Save profile</button></div></form></div>'+
  (db.role==='admin'?'<div class="schedule-card"><span class="tag">Data</span><div><button class="btn" data-a="export">Export JSON</button></div></div>':'')};
@@ -2018,11 +2115,11 @@ function render(){
 }
 const ALIAS={polls:'chat',vacation:'calendar',routine:'calendar',alerts:'notices'};
 const go=(t,o)=>{t=ALIAS[t]||t;o=o||{};const mn=$('.dash-main'),old=tab;sc[old]=mn.scrollTop;tab=t;try{localStorage.setItem(K+'tab',t)}catch(e){}
- if(!o.pop&&t!==old){ni++;try{history.pushState({v:t,i:ni},'','#/'+t)}catch(e){}}
+ if(!o.pop&&t!==old){ni++;try{history.pushState({v:t,i:ni},'','/'+slug(t))}catch(e){}}
  else if(o.pop)ni=(history.state&&history.state.i)||0;
  render();mn.scrollTo({top:o.pop&&t!==old?(sc[t]||0):0})};
-addEventListener('popstate',()=>{if(dv.hidden)return;const m=location.hash.match(/^#\/(\w+)/);if(m)go(m[1],{pop:1})});
-new MutationObserver(()=>{if(!dv.hidden){try{history.replaceState({v:tab,i:ni},'','#/'+tab)}catch(e){}}}).observe(dv,{attributes:true,attributeFilter:['hidden']});
+addEventListener('popstate',()=>{if(dv.hidden)return;const t=pathTab();if(t)go(t,{pop:1})});
+new MutationObserver(()=>{if(!dv.hidden){try{history.replaceState({v:tab,i:ni},'','/'+slug(tab))}catch(e){}}}).observe(dv,{attributes:true,attributeFilter:['hidden']});
 const A={sel:id=>{sel=id},cm:id=>{cal=new Date(cal.getFullYear(),cal.getMonth()+ +id,1)},ct:()=>{cal=day0();sel=iso(cal)}};
 window.__d={refresh,sync,V,A,call,done,esc,toast,snd,F,S,H,E,X,mine,vis,tg,diff,rel,iso,pd,add,day0,DN,MN,fmt,dayInfo,cOpts,FOR,go,render:()=>render(),get db(){return db},get user(){return user},get tab(){return tab},get cal(){return cal},get sel(){return sel}};
 const DEL=['delClass','delCourse','delCt','delRes','delNotice','delPoll','delVac','delEv','delProject'];
@@ -2047,13 +2144,13 @@ dv.addEventListener('submit',e=>{const f=e.target.closest('form[data-f]');if(!f)
  if(n==='addPoll')v.o=v.o.split('\n');
  done(()=>n==='saveProfile'?call('PUT','/profile',v):call('POST','/'+KM[n],v)).then(ok=>ok&&toast('SAVED'))});
 (()=>{const nt=$('#navToggle'),mobile=()=>matchMedia('(max-width:1024px)').matches,set=c=>{if(mobile()){dv.classList.toggle('mobile-nav-open',c);nt.setAttribute('aria-expanded',String(c))}else{dv.classList.toggle('nav-c',c);nt.setAttribute('aria-expanded',String(!c));try{localStorage.setItem(K+'navc',c?'1':'0')}catch(e){}}};dv.classList.remove('mobile-nav-open');if(!mobile()){let c=false;try{c=localStorage.getItem(K+'navc')==='1'}catch(e){}set(c)}nt.addEventListener('click',()=>{if(mobile())set(!dv.classList.contains('mobile-nav-open'));else set(!dv.classList.contains('nav-c'))});dv.addEventListener('click',e=>{if(e.target===dv&&dv.classList.contains('mobile-nav-open'))set(false)});dv.querySelector('.dash-nav').addEventListener('click',e=>{if(e.target.closest('.dash-link')&&mobile())set(false)});addEventListener('keydown',e=>{if(e.key==='Escape'&&dv.classList.contains('mobile-nav-open'))set(false)});addEventListener('resize',()=>{if(!mobile())dv.classList.remove('mobile-nav-open')})})();
-$('#dashHome').addEventListener('click',()=>{$('#mainPortal').hidden=false;dv.hidden=true;scrollTo(0,0);try{history.replaceState(null,'',location.pathname)}catch(e){}});
+$('#dashHome').addEventListener('click',()=>{$('#mainPortal').hidden=false;dv.hidden=true;scrollTo(0,0);try{history.replaceState(null,'','/')}catch(e){}});
 new MutationObserver(sync).observe(dv,{attributes:true,attributeFilter:['hidden']});
 setInterval(()=>{if(!dv.hidden&&!dc.contains(D.activeElement))refresh()},30000);
 sync();
 /* register / login against the server */
 const lf=$('#loginForm');let reg=false,pass=false;
-lf.insertAdjacentHTML('beforeend','<p style="margin:14px 0 0;font-size:11px"><a href="#" id="regToggle" style="color:var(--acc)">New student? Create an account</a></p>');
+lf.insertAdjacentHTML('beforeend','<p style="margin:14px 0 0;font-size:11px"><a href="/" id="regToggle" style="color:var(--acc)">New student? Create an account</a></p>');
 $('#loginUser').closest('.form-group').insertAdjacentHTML('beforebegin','<div class="form-group" id="regRow" hidden><label for="regName">Full name</label><input type="text" id="regName" maxlength="60" autocomplete="name"></div>');
 $('#regToggle').addEventListener('click',e=>{e.preventDefault();reg=!reg;$('#regRow').hidden=!reg;e.target.textContent=reg?'Have an account? Log in':'New student? Create an account';lf.querySelector('button[type=submit]').textContent=reg?'Register':'Authenticate';$('#loginPass').autocomplete=reg?'new-password':'current-password'});
 lf.addEventListener('submit',async e=>{if(pass)return;e.preventDefault();e.stopImmediatePropagation();
@@ -2062,13 +2159,32 @@ $('#dashLogout').addEventListener('click',()=>{fetch('/api/logout',{method:'POST
 addEventListener('offline',()=>{if(!dv.hidden){const b=$('#offlineBanner');b.hidden=false;b.textContent='Offline — showing saved dashboard data and resources.'}});addEventListener('online',()=>{if(!dv.hidden)sync()});
 /* keep the session across reloads / tabs */
 fetch('/api/me',{credentials:'same-origin'}).then(r=>r.ok?r.json():null).then(m=>{const c=sessionStorage.getItem('currentUser');
- if(m&&m.id!==c){sessionStorage.setItem('currentUser',m.id);location.reload()}else if(!m&&c){sessionStorage.removeItem('currentUser');location.reload()}}).catch(()=>{});
+ if(m&&m.id!==c){sessionStorage.setItem('currentUser',m.id);location.reload()}else if(!m&&c){sessionStorage.removeItem('currentUser');location.reload()}
+ else if(!m&&!c&&hm0&&!/^(projects|gallery)$/.test(hm0)){try{history.replaceState(null,'','/')}catch(e){}openLogin()}}).catch(()=>{});
 const gc=$('#gchips');if(gc){gc.innerHTML=['','A','B','A1','A2','B1','B2'].map(x=>'<button class="chip" aria-pressed="'+(x==='')+'" data-g="'+x+'">'+(x||'All')+'</button>').join('');
  gc.addEventListener('click',e=>{const b=e.target.closest('[data-g]');if(!b)return;gf=b.dataset.g;gc.querySelectorAll('.chip').forEach(c=>c.setAttribute('aria-pressed',c===b));drawS()})}
 /* public site: students + projects come from the database */
 fetch('/api/students').then(r=>r.json()).then(s=>{if(s.length){window.STUDENTS=s;drawS()}}).catch(()=>{});
 fetch('/api/gallery').then(r=>r.json()).then(g=>{GAL=Array.isArray(g)?g:[];drawG()}).catch(()=>{});
 fetch('/api/projects').then(r=>r.json()).then(p=>{if(p.length){window.PROJECTS=p;window.cats=['All'].concat(p.map(x=>x.c).filter((c,i,a)=>a.indexOf(c)===i));window.cur='All';drawP()}}).catch(()=>{});
+})();
+</script>
+<script>
+/* developer card: details come from the developer's Profile (via /api/developer); email -> mailto, phone -> WhatsApp */
+(function(){
+ var el=document.getElementById("devCard");if(!el)return;
+ var DEF={id:"2504081",name:"",email:"u2504081@student.cuet.ac.bd",phone:""};
+ function row(k,h){return h?"<dt>"+k+"</dt><dd>"+h+"</dd>":""}
+ function draw(z){
+  var nm=z.name||"Student "+z.id,loc=[z.town,z.dist].filter(Boolean).join(", "),ok=function(u){return /^https?:\/\//i.test(u||"")},
+   L=[["Facebook",z.fb],["Instagram",z.ig],["LinkedIn",z.li],["Link",z.ot]].filter(function(x){return ok(x[1])});
+  el.innerHTML='<div class="dp" role="img" aria-label="Photo of '+esc(nm)+'">'+(z.photo?'<img src="'+esc(z.photo)+'" alt="" decoding="async" onerror="this.remove()">':"")+esc((nm.match(/[A-Za-z0-9]/)||["D"])[0].toUpperCase())+'</div>'+
+   '<div><span class="pill">Developer</span><h3>'+esc(nm)+'</h3><p class="sub">CSE \'25 · CUET'+(z.sec?" · Section "+esc(z.sec)+(z.g?" · Group "+esc(z.g):""):"")+'</p>'+
+   '<dl>'+row("ID",esc(z.id))+row("Email",mailHtml(z.email))+row("Phone",phoneHtml(z.phone))+row("College",esc(z.college||""))+row("School",esc(z.school||""))+row("Hometown",esc(loc))+'</dl>'+
+   (L.length?'<div class="dl2">'+L.map(function(x){return '<a class="mini" href="'+esc(x[1])+'" target="_blank" rel="noopener noreferrer">'+x[0]+' ↗</a>'}).join("")+'</div>':"")+'</div>';
+ }
+ draw(DEF);
+ fetch("/api/developer").then(function(r){return r.ok?r.json():null}).then(function(z){if(z)draw(Object.assign({},DEF,z,{email:z.email||DEF.email}))}).catch(function(){});
 })();
 </script>
 <script src="/x.js"></script>
