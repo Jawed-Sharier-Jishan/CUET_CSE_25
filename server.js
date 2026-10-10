@@ -227,7 +227,10 @@ async function chatDownload(req, res, id, U) {
   }
   let buf;
   try {
-    if (d.file.cloud) { const r = await fetch(cloudinary.url(d.file.cloud.publicId, { resource_type: 'raw', type: 'authenticated', sign_url: true, secure: true })); if (!r.ok) throw new Error('storage ' + r.status); buf = Buffer.from(await r.arrayBuffer()); }
+    if (d.file.cloud) { // try the signed delivery URL first, then the download API that the Resources tab already uses
+      const urls = [() => cloudinary.url(d.file.cloud.publicId, { resource_type: 'raw', type: d.file.cloud.deliveryType || 'authenticated', sign_url: true, secure: true }), () => cloudPrivateUrl(d.file.cloud)]; let last = 'no url';
+      for (const mk of urls) { try { const r = await fetch(mk()); if (r.ok) { buf = Buffer.from(await r.arrayBuffer()); break; } last = 'storage ' + r.status; } catch (e) { last = e.message; } }
+      if (!buf) throw new Error(last); }
     else buf = fs.readFileSync(path.join(UP, 'm_' + row.id));
   } catch (e) {
     if (marked) { delete d.seen[U.id]; run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); }
@@ -336,6 +339,9 @@ function state(u) {
     routine: of('routine'), nodes: of('node'), marks: of('mark').filter(m => m.owner === u.id), fb: isStaff(u) ? of('fb').map(f => ({ ...f, by: f.an ? 'Anonymous' : (names[f.owner] || f.owner), ...(f.an && u.id === CID ? { real: (names[f.owner] || '') + ' (' + f.owner + ')' } : {}), owner: undefined })) : [],
     gallery: of('photo').map(g => ({ id: g.id, ts: g.ts, cap: g.cap || '', al: g.al || 'General', by: names[g.owner] || g.owner, mine: g.owner === u.id })), cts: of('ct'), cancels: of('cancel'), res: of('res'), vac: of('vac'), notices: of('notice'), events: of('event').filter(e => e.sh || e.owner === u.id),
     projects: of('project').map(p => ({ ...p, a: p.a || names[p.owner] || '—' })),
+    chat: (() => { const pl = place(u.id), rooms = isStaff(u) ? ROOMS : ['U', pl.sec, pl.g].filter(Boolean); // newest chat messages from others, shown in Alerts
+      return all_("SELECT id,owner,data,ts FROM items WHERE kind='msg' AND owner<>? AND ts>? ORDER BY ts DESC LIMIT 150", u.id, Date.now() - 3 * 864e5).map(r => ({ r, d: JSON.parse(r.data) })).filter(x => rooms.includes(x.d.r)).slice(0, 15)
+        .map(x => ({ id: x.r.id, ts: x.r.ts, r: x.d.r, n: names[x.r.owner] || x.r.owner, t: x.d.once ? 'View-once file' : x.d.file ? '📎 ' + x.d.file.n : x.d.img ? '📷 Photo' : String(x.d.t || '').slice(0, 90), c: x.d.t && (x.d.file || x.d.img) && !x.d.once ? String(x.d.t).slice(0, 60) : '' })); })(),
     polls: of('poll').map(p => { const vs = votes.filter(v => v.poll === p.id), mine = vs.find(v => v.uid === u.id); return { id: p.id, ow: p.owner, q: p.q, ts: p.ts, cl: p.cl || 24, o: p.o.map((t, i) => ({ t, v: vs.filter(v => v.opt === i).length })), my: mine ? mine.opt : -1 }; }) };
 }
 
