@@ -50,17 +50,6 @@
   box-sizing: border-box;
 }
 
-:root[data-theme="light"] {
-  --bg: #0d1527;
-  --fg: #f0f8ff;
-  --mut: #8ca3be;
-  --line: color-mix(in srgb, var(--acc) 35%, transparent);
-  --line-strong: var(--acc);
-  --card: rgba(12, 25, 48, 0.85);
-  --acc: #5fd4e8;
-  --acc2: #ff4d5e;
-  --accfg: #020813;
-}
 
 html {
   scroll-padding-top: calc(70px + env(safe-area-inset-top, 0px));
@@ -655,9 +644,6 @@ footer a:hover { color: var(--acc); text-shadow: 0 0 8px var(--acc-glow); }
 
 /* ===== v2 upgrades ===== */
 [hidden]{display:none!important}
-:root[data-theme="light"]{--bg:#eef6fa;--fg:#06202e;--mut:#4a6a80;--line:rgba(0,120,150,.3);--line-strong:#007b94;--card:rgba(255,255,255,.82);--acc:#007b94;--acc-glow:rgba(0,123,148,.35);--acc2:#c81e3a;--acc2-glow:rgba(200,30,58,.3);--accfg:#fff;--grid:rgba(0,123,148,.08)}
-:root[data-theme="light"] nav{background:rgba(238,246,250,.85)}
-:root[data-theme="light"] body::before,:root[data-theme="light"] body::after{display:none}
 html.od{--acc:#ffe600;--acc-glow:rgba(255,230,0,.6);--acc2:#00ff9c;--acc2-glow:rgba(0,255,156,.6)}
 .hero{position:relative;overflow:hidden}
 .orb{position:absolute;width:420px;height:420px;border-radius:50%;filter:blur(90px);opacity:.22;pointer-events:none;animation:flt 16s ease-in-out infinite alternate}
@@ -777,7 +763,6 @@ h2{animation:none}
 .cb[aria-pressed=true]{background:var(--acc);color:var(--accfg)}
 .sw3{display:grid;grid-template-columns:1fr 1fr;gap:8px}.sw3 .sx.cu,.sw3 .cb{width:auto;height:36px;border-radius:18px;display:grid;place-items:center;font-size:10px;letter-spacing:.12em}.sw3 .cu:hover{transform:none}.cu em{font-style:normal;color:#fff;text-shadow:0 0 3px #000,0 0 6px #000;pointer-events:none;text-transform:uppercase}
 :root{--acc-glow:color-mix(in srgb,var(--acc) 45%,transparent);--acc2-glow:color-mix(in srgb,var(--acc2) 40%,transparent)}
-:root[data-theme="light"]{--acc-glow:color-mix(in srgb,var(--acc) 35%,transparent);--acc2-glow:color-mix(in srgb,var(--acc2) 30%,transparent)}
 .rs{background:none;border:1px solid var(--line);color:var(--fg);display:grid;place-items:center;font-size:16px;--c:var(--acc2)}
 #cp{max-height:calc(100vh - 90px);overflow:auto}
 /* Student Dashboard HUD Styles */
@@ -1266,6 +1251,254 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 }
 #toast{bottom:calc(34px + env(safe-area-inset-bottom,0px))}
 #hud{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+
+/* =====================================================================
+   LIGHT MODE v3 - one consolidated layer
+   Everything below only applies when <html data-theme="light">.
+   Dark mode is untouched (defaults for new tokens are set on :root).
+   Note: many components use clip-path (cut corners), which also clips
+   box-shadow, so light mode relies on solid surfaces + crisp borders
+   rather than soft shadows on those elements.
+   ===================================================================== */
+:root{--hd:#fff;--field:rgba(4,14,28,.8);--panel:rgba(2,8,18,.8);--ok:#3ddc97;--vio:#a78bfa;--gold:#f2c94c}
+
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f3f8fb;
+  --fg:#0b2233;
+  --hd:#04202f;
+  --mut:#4b6377;
+  --line:rgba(0,90,120,.22);
+  --line-strong:#00758c;
+  --card:rgba(255,255,255,.92);
+  --acc:#00758c;
+  --acc-glow:rgba(0,117,140,.20);
+  --acc2:#c81e3a;
+  --acc2-glow:rgba(200,30,58,.18);
+  --accfg:#fff;
+  --grid:rgba(0,117,140,.07);
+  --field:#fff;
+  --panel:#fff;
+  --ok:#0a8458;
+  --vio:#6a45d6;
+  --gold:#9a5f00;
+}
+
+/* ---- page ---- */
+:root[data-theme="light"] body{background:linear-gradient(180deg,#f6fafd 0%,var(--bg) 40%,#edf4f9 100%) fixed}
+:root[data-theme="light"] body::before,
+:root[data-theme="light"] body::after{display:none}
+:root[data-theme="light"] #bg-canvas{opacity:.2}
+:root[data-theme="light"] #sweep{opacity:.08}
+:root[data-theme="light"] ::selection{background:rgba(0,117,140,.22);color:var(--hd)}
+:root[data-theme="light"] :focus-visible{box-shadow:0 0 0 3px rgba(0,117,140,.22)}
+:root[data-theme="light"] .skip{background:var(--acc);color:#fff}
+
+/* ---- navigation ---- */
+:root[data-theme="light"] nav{
+  background:rgba(255,255,255,.86);
+  border-bottom:1px solid var(--line);
+  box-shadow:0 1px 0 rgba(255,255,255,.8),0 8px 24px rgba(8,50,80,.07);
+}
+:root[data-theme="light"] .brand{text-shadow:none}
+:root[data-theme="light"] .logo,
+:root[data-theme="light"] .logo.mid{filter:drop-shadow(0 1px 3px rgba(0,117,140,.30))}
+:root[data-theme="light"] .logo.big{filter:drop-shadow(0 4px 12px rgba(0,117,140,.28))}
+:root[data-theme="light"] .links a{color:var(--fg)}
+:root[data-theme="light"] .links a:hover,
+:root[data-theme="light"] .links a.active{color:var(--acc);text-shadow:none}
+:root[data-theme="light"] .links a::after{box-shadow:none}
+:root[data-theme="light"] .scroll-progress{box-shadow:none}
+:root[data-theme="light"] .ib{background:#fff;border-color:var(--line);color:var(--acc)}
+:root[data-theme="light"] .ib:hover{background:var(--acc);color:#fff;box-shadow:none}
+@media (max-width:768px){
+  :root[data-theme="light"] .links{background:rgba(255,255,255,.98);box-shadow:0 14px 30px rgba(8,50,80,.14)}
+}
+
+/* ---- hero ---- */
+:root[data-theme="light"] .hero{
+  background:
+    radial-gradient(circle at 18% 28%,rgba(0,117,140,.10) 0%,transparent 55%),
+    radial-gradient(circle at 85% 80%,rgba(200,30,58,.06) 0%,transparent 50%);
+}
+:root[data-theme="light"] .orb{opacity:.14}
+:root[data-theme="light"] .floor{opacity:.12}
+:root[data-theme="light"] .hero h1{color:var(--hd);text-shadow:none}
+:root[data-theme="light"] .tag{color:var(--acc2)}
+:root[data-theme="light"] .typed{text-shadow:none}
+:root[data-theme="light"] p{color:var(--mut)}
+
+/* ---- buttons / chips ---- */
+:root[data-theme="light"] .btn{background:rgba(0,117,140,.06);color:var(--acc)}
+:root[data-theme="light"] .btn:hover{background:var(--acc);color:#fff;box-shadow:none}
+:root[data-theme="light"] .btn.p{background:var(--acc);color:#fff;box-shadow:none}
+:root[data-theme="light"] .btn.p:hover{background:var(--acc2);border-color:var(--acc2);color:#fff;box-shadow:none}
+:root[data-theme="light"] .chip{background:#fff;color:var(--mut)}
+:root[data-theme="light"] .chip:hover{color:var(--acc);border-color:var(--acc);background:rgba(0,117,140,.05)}
+:root[data-theme="light"] .chip[aria-pressed=true]{background:var(--acc);color:#fff;box-shadow:none}
+
+/* ---- terminal block stays dark on purpose (it is a code window) ---- */
+:root[data-theme="light"] .term{
+  background:#0b1626;color:#c0ebff;border-color:rgba(0,117,140,.45);
+  box-shadow:inset 0 0 15px rgba(95,212,232,.08);
+}
+:root[data-theme="light"] .term .g{color:#5fd4e8}
+:root[data-theme="light"] .term .d,
+:root[data-theme="light"] .term::after{color:#7f9bb5}
+
+/* ---- ticker ---- */
+:root[data-theme="light"] .strip{background:rgba(0,117,140,.07);color:var(--acc)}
+
+/* ---- section headings ---- */
+:root[data-theme="light"] section::before{box-shadow:none}
+:root[data-theme="light"] h2{color:var(--hd);text-shadow:none}
+:root[data-theme="light"] h2::before{color:var(--acc2)}
+:root[data-theme="light"] h3,
+:root[data-theme="light"] h4{color:var(--hd)}
+
+/* ---- fields ---- */
+:root[data-theme="light"] input[type=search],
+:root[data-theme="light"] input[type=text],
+:root[data-theme="light"] input[type=password],
+:root[data-theme="light"] input[type=email],
+:root[data-theme="light"] input[type=number],
+:root[data-theme="light"] input[type=date],
+:root[data-theme="light"] input[type=time],
+:root[data-theme="light"] input[type=url],
+:root[data-theme="light"] input[type=tel],
+:root[data-theme="light"] textarea,
+:root[data-theme="light"] select,
+:root[data-theme="light"] .ssearch input,
+:root[data-theme="light"] .dash-content .in{
+  background:var(--field);color:var(--fg);border-color:rgba(0,90,120,.32);
+}
+:root[data-theme="light"] input::placeholder,
+:root[data-theme="light"] textarea::placeholder{color:#6d8496;opacity:1}
+:root[data-theme="light"] input:focus,
+:root[data-theme="light"] textarea:focus,
+:root[data-theme="light"] select:focus,
+:root[data-theme="light"] .dash-content .in:focus{border-color:var(--acc);box-shadow:0 0 0 3px rgba(0,117,140,.16)}
+:root[data-theme="light"] .dash-content select.in option{background:#fff;color:var(--fg)}
+
+/* ---- cards (public) ---- */
+:root[data-theme="light"] .card,
+:root[data-theme="light"] .sc,
+:root[data-theme="light"] .dev{background:#fff;border-color:rgba(0,90,120,.26)}
+:root[data-theme="light"] .card b{color:var(--hd)}
+:root[data-theme="light"] a.card:hover,
+:root[data-theme="light"] .sc:hover,
+:root[data-theme="light"] .dev:hover{
+  background:#f7fcfe;box-shadow:none;border-color:var(--acc);
+}
+:root[data-theme="light"] .av::after,
+:root[data-theme="light"] .dev .dp::after{border-color:rgba(0,117,140,.35)}
+
+/* ---- gallery / lightbox (photo overlays stay dark) ---- */
+:root[data-theme="light"] .gal .gp span,
+:root[data-theme="light"] .gi span{color:#fff}
+:root[data-theme="light"] #plb,
+:root[data-theme="light"] .glb{background:rgba(6,18,30,.92)}
+
+/* ---- footer ---- */
+:root[data-theme="light"] footer{background:#e5eff6;border-top:1px solid var(--line);color:var(--mut)}
+:root[data-theme="light"] footer b{color:var(--hd)}
+
+/* ---- modals / overlays ---- */
+:root[data-theme="light"] #loginModal,
+:root[data-theme="light"] #dos{background:rgba(10,32,48,.45)}
+:root[data-theme="light"] .login-card,
+:root[data-theme="light"] .pb,
+:root[data-theme="light"] .db,
+:root[data-theme="light"] #cp,
+:root[data-theme="light"] #toast{background:#fff;color:var(--fg);box-shadow:0 18px 50px rgba(8,50,80,.22);border-color:var(--acc)}
+:root[data-theme="light"] #toast{color:var(--acc)}
+:root[data-theme="light"] .login-card h3{color:var(--hd)}
+:root[data-theme="light"] #boot{background:#030712}   /* boot screen is a deliberate dark splash */
+
+/* ---- inline white text written into markup/JS templates ---- */
+:root[data-theme="light"] [style*="color:#fff"]{color:var(--hd)!important}
+:root[data-theme="light"] [style*="color:#f2c94c"]{color:var(--gold)!important}
+
+/* ---------------------------------------------------------------------
+   Dashboard
+   --------------------------------------------------------------------- */
+:root[data-theme="light"] #dashView{background:var(--bg)}
+:root[data-theme="light"] .dash-sidebar{
+  background:rgba(255,255,255,.96);border-right:1px solid var(--line);
+}
+:root[data-theme="light"] .dash-header{
+  background:rgba(255,255,255,.88);border-bottom:1px solid var(--line);
+}
+:root[data-theme="light"] .dash-link{color:var(--mut)}
+:root[data-theme="light"] .dash-link:hover,:root[data-theme="light"] .dash-link.active{text-shadow:none}
+:root[data-theme="light"] .dash-link:hover{color:var(--acc);background:rgba(0,117,140,.07)}
+:root[data-theme="light"] .dash-link.active{color:var(--acc);background:rgba(0,117,140,.12);border-color:var(--acc)}
+:root[data-theme="light"] .dash-header h2,
+:root[data-theme="light"] .dash-header h3{color:var(--hd)}
+:root[data-theme="light"] .dash-content h4{color:var(--hd)}
+:root[data-theme="light"] .progress-bar,
+:root[data-theme="light"] .bar{background:rgba(0,90,120,.12)}
+
+/* glows -> flat */
+:root[data-theme="light"] #dashView .dash-content h2{text-shadow:none}
+:root[data-theme="light"] #dashView .schedule-card:hover{box-shadow:none}
+:root[data-theme="light"] #dashView::after{opacity:.55}
+
+/* surfaces that were rgba(2,8,18,.8) */
+:root[data-theme="light"] .class-item,
+:root[data-theme="light"] .day-box,
+:root[data-theme="light"] .cd,
+:root[data-theme="light"] .pv{background:#fff;border-color:rgba(0,90,120,.24)}
+:root[data-theme="light"] .class-title{color:var(--hd)}
+:root[data-theme="light"] .cd:hover,
+:root[data-theme="light"] .pv:hover{background:#f4fafd;border-color:var(--acc)}
+:root[data-theme="light"] .tt td b{color:var(--hd)}
+:root[data-theme="light"] .wi,
+:root[data-theme="light"] .mg{background:#fff}
+:root[data-theme="light"] .mg.me{background:rgba(0,117,140,.10)}
+
+/* calendar / schedule colours: darker hues so they read on white */
+:root[data-theme="light"] .k-sess{--kc:var(--ok)}
+:root[data-theme="light"] .k-ct{--kc:var(--acc2)}
+:root[data-theme="light"] .k-ev{--kc:var(--vio)}
+:root[data-theme="light"] .k-hol{--kc:var(--gold)}
+:root[data-theme="light"] .ch{color:#fff}
+:root[data-theme="light"] .wi.k-sess{border-color:var(--ok)}
+:root[data-theme="light"] .wi.k-ev{border-color:var(--vio)}
+:root[data-theme="light"] .wi.k-hol{border-color:var(--gold)}
+:root[data-theme="light"] u.k-sess{background:var(--ok)}
+:root[data-theme="light"] u.k-ev{background:var(--vio)}
+:root[data-theme="light"] u.k-hol,
+:root[data-theme="light"] .cd u.g{background:var(--gold)}
+:root[data-theme="light"] .pill.k-sess{color:var(--ok)}
+:root[data-theme="light"] .pill.k-ev{color:var(--vio)}
+:root[data-theme="light"] .pill.k-hol{color:var(--gold)}
+:root[data-theme="light"] .tt td.lb{background:color-mix(in srgb,var(--ok) 12%,#fff);border-color:var(--ok)}
+:root[data-theme="light"] .wk .off,
+:root[data-theme="light"] .cal.big .cd.off{background:color-mix(in srgb,var(--gold) 10%,#fff)}
+:root[data-theme="light"] .mg.pn{border-color:var(--gold)}
+:root[data-theme="light"] .pinbar{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 10%,#fff)}
+:root[data-theme="light"] .bell b{color:#fff}
+
+/* delete button hover keeps white-on-red */
+:root[data-theme="light"] .mini.rm:hover,
+:root[data-theme="light"] .mini.rm:focus-visible{background:#d62839;border-color:#d62839;color:#fff;box-shadow:none}
+
+/* file viewer is a photo/overlay: keep it dark */
+:root[data-theme="light"] #fv{background:rgba(6,18,30,.9)}
+:root[data-theme="light"] .fvb{color:#fff}
+:root[data-theme="light"] #fv [style*="color:#fff"],
+:root[data-theme="light"] .glb [style*="color:#fff"],
+:root[data-theme="light"] #plb [style*="color:#fff"]{color:#fff!important}
+
+/* mobile drawer */
+@media (max-width:1024px){
+  :root[data-theme="light"] #dashView .dash-sidebar{background:#fff;box-shadow:12px 0 36px rgba(8,50,80,.22)}
+  :root[data-theme="light"] #dashView::before{background:rgba(10,32,48,.45)}
+}
+
+/* thin scrollbars that match */
+:root[data-theme="light"]{scrollbar-color:rgba(0,90,120,.4) transparent}
 </style>
 </head>
 <body>
@@ -1671,10 +1904,11 @@ var L=document.getElementById("links"),M=document.getElementById("menu");
 M.addEventListener("click",function(){var o=L.classList.toggle("open");M.setAttribute("aria-expanded",o)});
 L.addEventListener("click",function(){L.classList.remove("open");M.setAttribute("aria-expanded","false")});
 var R=document.documentElement;
-try{var t=localStorage.getItem("theme");if(t)R.setAttribute("data-theme",t)}catch(e){}
+function tcol(n){var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",n==="light"?"#f3f8fb":"#030712")}
+try{var t=localStorage.getItem("theme");if(t){R.setAttribute("data-theme",t);tcol(t)}}catch(e){}
 document.getElementById("theme").addEventListener("click",function(){
  var dark=(R.getAttribute("data-theme")||"dark")==="dark";
- var n=dark?"light":"dark";R.setAttribute("data-theme",n);
+ var n=dark?"light":"dark";R.setAttribute("data-theme",n);tcol(n);
  try{localStorage.setItem("theme",n)}catch(e){}
 });
 
@@ -2049,7 +2283,12 @@ let st={a:P[0][1],b:P[0][2],sub:null,cyc:false},h=0,iv;
 try{Object.assign(st,JSON.parse(localStorage.getItem('acc6')||'{}'))}catch(e){}
 function hsl(x){const n=parseInt(x.slice(1),16),r=(n>>16)/255,g=(n>>8&255)/255,b=(n&255)/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;let H=0,Sa=0;
 if(mx!==mn){const d=mx-mn;Sa=l>.5?d/(2-mx-mn):d/(mx+mn);H=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4;H*=60}return[H,Sa*100,l*100]}
-function apply(a,b){const lt=R.getAttribute('data-theme')==='light',m=c=>lt?'color-mix(in srgb,'+c+' 58%,#000)':c;R.style.setProperty('--acc',m(a));R.style.setProperty('--acc2',m(b))}
+const _cx=document.createElement('canvas').getContext('2d'),_lin=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};
+/* light mode: darken an accent only as far as needed to stay readable (>= 4.8:1) on the pale background */
+function readable(col){try{_cx.fillStyle='#000';_cx.fillStyle=col;const h=_cx.fillStyle;if(h[0]!=='#')return col;const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);
+ for(let k=100;k>=38;k-=2){const f=k/100,L=.2126*_lin(r*f)+.7152*_lin(g*f)+.0722*_lin(b*f);if(.98/(L+.05)>=4.8)return'rgb('+Math.round(r*f)+','+Math.round(g*f)+','+Math.round(b*f)+')'}
+ return'rgb('+Math.round(r*.38)+','+Math.round(g*.38)+','+Math.round(b*.38)+')'}catch(e){return'color-mix(in srgb,'+col+' 52%,#000)'}}
+function apply(a,b){const lt=R.getAttribute('data-theme')==='light',m=c=>lt?readable(c):c;R.style.setProperty('--acc',m(a));R.style.setProperty('--acc2',m(b))}
 function run(){clearInterval(iv);if(st.cyc&&!RM)iv=setInterval(()=>{h=(h+.8)%360;apply('hsl('+h+' 72% 62%)',st.sub||'hsl('+((h+150)%360)+' 78% 60%)')},60);else apply(st.a,st.sub||st.b)}
 function sync(){D.querySelectorAll('.sx[data-i]').forEach(e=>e.setAttribute('aria-pressed',!st.cyc&&P[+e.dataset.i][1]===st.a));
 D.querySelectorAll('.sx[data-s]').forEach(e=>e.setAttribute('aria-pressed',S[+e.dataset.s][1]===st.sub));$('#rs').setAttribute('aria-pressed',!st.sub);$('#dm').setAttribute('aria-pressed',!st.cyc&&st.a===P[0][1]);$('#cy').setAttribute('aria-pressed',st.cyc)}
@@ -2071,6 +2310,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape')cp.hidden=true});
 $('#theme').addEventListener('click',()=>setTimeout(run,0));
 if(RM)$('#cy').hidden=true;
 run();sync();
+new MutationObserver(()=>run()).observe(R,{attributes:true,attributeFilter:['data-theme']});
 })();
 </script>
 <script>
