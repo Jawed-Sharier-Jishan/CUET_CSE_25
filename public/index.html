@@ -1258,6 +1258,14 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
  #dashView .dash-header{height:auto;min-height:calc(58px + env(safe-area-inset-top,0px));padding-top:calc(8px + env(safe-area-inset-top,0px))}
  #dashView .dash-content{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 }
+/* iPhone Safari: 100dvh follows the visible area (older browsers keep 100vh). Home Screen app: keep fixed bottom items above the home bar (inset is 0 elsewhere) */
+@supports (height:100dvh){
+ #dashView{min-height:100dvh}
+ #cp{max-height:calc(100dvh - 90px)}
+ @media(max-width:1024px){#dashView{min-height:100dvh}#dashView .dash-main{min-height:100dvh}#dashView .dash-sidebar{max-height:100dvh}}
+}
+#toast{bottom:calc(34px + env(safe-area-inset-bottom,0px))}
+#hud{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
 </style>
 </head>
 <body>
@@ -1837,7 +1845,7 @@ loginForm.addEventListener('submit', (e)=>{
 
 $('#forgotPass').addEventListener('click', (e)=>{
   e.preventDefault();
-  toast('CONTACT BATCH REPRESENTATIVE TO RESET ACCESS');
+  toast('ASK A CLASS ADMIN TO RESET YOUR PASSWORD');
 });
 
 syncViews();
