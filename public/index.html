@@ -1187,6 +1187,30 @@ u.k-class{background:var(--acc)}u.k-sess{background:#3ddc97}u.k-ct{background:va
  .dq{font-size:16px}
 }
 .fbq{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* ===== actions always pinned to the far right (phone + pc) ===== */
+.class-item .row,.rr{margin-left:auto;justify-content:flex-end}
+.class-item .row .pill,.rr .pill{margin:0}
+.class-item.pick{text-align:left}
+.class-item.pick>span:first-child{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
+.class-item.pick>.pill{flex:none;margin:0 0 0 auto}
+.rr{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.row:has(>.rr){flex-wrap:wrap}
+.row:has(>.rr)>div:first-child{flex:1 1 140px;min-width:0;overflow-wrap:anywhere}
+.bulkr{margin-left:auto;justify-content:flex-end}
+@media(max-width:700px){
+ #dashView .class-item:not(.mrow):not(.pick)>div:first-child{flex:1 1 140px;min-width:0;overflow-wrap:anywhere}
+ #dashView .class-item>.row{flex:0 1 auto;margin-left:auto;justify-content:flex-end;max-width:100%}
+}
+/* ===== classmates: smaller role tags (phone + pc) ===== */
+.mrow .mnm .pill{min-height:20px;padding:2px 8px;font-size:9px;letter-spacing:.12em;margin:0}
+/* classmates on phone: FB at left, Make admin / Make CR at right */
+@media(max-width:600px){
+ .mrow .mnm .pill{min-height:20px;padding:2px 8px;font-size:9px}
+ .mact{justify-content:flex-end}
+ .mact>a.mini{margin-right:auto}
+ .mact{gap:6px}.mact .mini{padding:8px 9px;font-size:11px;letter-spacing:.06em}
+}
 </style>
 </head>
 <body>
