@@ -145,7 +145,7 @@ const OFFICIAL = {
 };
 function loadOfficial() {
   run("DELETE FROM items WHERE kind IN ('course','routine','ct','att')");
-  OFFICIAL.courses.forEach(c => put('course', null, { code: c[0], t: c[1], cr: c[2], th: c[3] }));
+  OFFICIAL.courses.forEach(c => put('course', null, { code: c[0], t: c[1], cr: c[2], th: c[3], ty: /lab/i.test(c[1]) ? 'Sessional' : 'Theory' }));
   OFFICIAL.routine.forEach(r => put('routine', null, { d: r[0], s: PER[r[1]][0], e: PER[r[2]][1], c: r[3], k: r[5] || 'Class', for: r[4] }));
   const today = new Date().toISOString().slice(0, 10), n = {};
   OFFICIAL.cts.forEach(([c, day, weeks]) => weeks.forEach(w => {
@@ -275,6 +275,18 @@ const ADMIN = new Set(['node', 'course', 'routine', 'ct', 'vac', 'notice', 'res'
 const DR = /^\d{4}-\d\d-\d\d$/, TR = /^\d\d:\d\d$/;
 const bad = m => { throw { code: 400, error: m }; };
 const normUrl = u => { u = String(u || '').trim(); if (!/^https?:\/\//i.test(u)) u = 'https://' + u; try { return new URL(u).href; } catch { return bad('Invalid URL'); } };
+// ---- test rules: theory = credits + 1 CTs; sessional = 1 quiz + 1 lab test; cancelled tests don't count. Applies to Tests items and Calendar "Test" events.
+const normT = z => String(z || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const courseByTitle = t => { const n = normT(t); return all_("SELECT data FROM items WHERE kind='course'").map(r => JSON.parse(r.data)).sort((a, b) => b.code.length - a.code.length).find(c => n.includes(normT(c.code))); };
+const isSess = c => c.ty ? c.ty === 'Sessional' : (c.cr < 2 || /lab|sessional/i.test(c.t));
+const inferTy = (t, c) => /quiz/i.test(t) ? 'Quiz' : /lab\s*test|lab\s*final/i.test(t) ? 'Lab test' : /term\s*final|final/i.test(t) ? 'Term final' : (c && isSess(c) ? 'Quiz' : 'CT');
+const ctMax = c => Math.floor(c.cr) + 1;
+const testsOf = (code, ty, selfId) => { const out = []; all_("SELECT id,kind,data FROM items WHERE kind IN ('ct','event')").forEach(r => { if (r.id === selfId) return; const d = JSON.parse(r.data); if (d.x) return;
+  if (r.kind === 'ct') { if (d.c === code && (d.ty || 'CT') === ty) out.push(d); } else if (d.k === 'ct') { const c = courseByTitle(d.t); if (c && c.code === code && inferTy(d.t, c) === ty) out.push(d); } }); return out; };
+const checkLimit = (c, ty, selfId, restoring) => { const me = selfId && one('SELECT data FROM items WHERE id=?', selfId); if (!restoring && me && JSON.parse(me.data).x) return; const n = testsOf(c.code, ty, selfId).length;
+  if (ty === 'CT') { if (n >= ctMax(c)) bad(c.code + ' has ' + c.cr + ' credits, so it gets ' + ctMax(c) + ' CTs and all ' + ctMax(c) + ' are already added'); } else if (n >= 1) bad(c.code + ' already has a ' + ty); };
+const checkEventTest = (o, selfId, restoring) => { const c = courseByTitle(o.t); if (!c) return; const ty = inferTy(o.t, c), sess = isSess(c);
+  if (sess && !['Quiz', 'Lab test'].includes(ty)) bad(c.code + ' is sessional: it only has one Quiz and one Lab test'); if (!sess && ['Quiz', 'Lab test'].includes(ty)) bad(c.code + ' is a theory course: quizzes and lab tests are only for sessional courses'); checkLimit(c, ty, selfId, restoring); };
 function clean(kind, d, selfId) {
   const o = {};
   for (const f of FIELDS[kind]) { const v = d[f]; if (v == null) continue; o[f] = Array.isArray(v) ? v.slice(0, 8).map(x => String(x).trim().slice(0, 80)).filter(Boolean) : String(v).trim().slice(0, 400); }
@@ -293,16 +305,16 @@ function clean(kind, d, selfId) {
   if (kind === 'notice') { need('t', 'b'); if (!DR.test(o.d || '')) o.d = new Date().toISOString().slice(0, 10); o.pin = 0; }
   if (kind === 'res') { need('t', 'u'); o.u = normUrl(o.u); o.c = o.c || ''; }
   if (kind === 'project') { need('t', 'c', 's'); o.u = o.u ? normUrl(o.u) : ''; o.d = o.d || ''; o.y = String(new Date().getFullYear()); }
-  if (kind === 'event') { need('d', 't'); if (!DR.test(o.d)) bad('Invalid date'); o.sh = 1; o.k = ['class', 'sess', 'ct', 'ev', 'hol'].includes(o.k) ? o.k : 'ev'; if (o.s && !TR.test(o.s)) bad('Invalid start time'); if (o.e && !TR.test(o.e)) bad('Invalid end time'); if (o.s && o.e && o.e <= o.s) bad('End time must be after start'); if (o.k === 'hol') { o.s = ''; o.e = ''; } }
+  if (kind === 'event') { need('d', 't'); if (!DR.test(o.d)) bad('Invalid date'); o.sh = 1; o.k = ['class', 'sess', 'ct', 'ev', 'hol'].includes(o.k) ? o.k : 'ev'; if (o.s && !TR.test(o.s)) bad('Invalid start time'); if (o.e && !TR.test(o.e)) bad('Invalid end time'); if (o.s && o.e && o.e <= o.s) bad('End time must be after start'); if (o.k === 'hol') { o.s = ''; o.e = ''; } if (o.k === 'ct') checkEventTest(o, selfId); }
   if (kind === 'poll') { need('q'); if (!o.o || o.o.length < 2) bad('A poll needs at least 2 options'); }
   if (kind === 'ct') { // CT and Term final -> theory courses; Quiz -> sessional courses. One Quiz per sessional, one Term final per theory.
     const cr = all_("SELECT data FROM items WHERE kind='course'").map(r => JSON.parse(r.data)).find(c => c.code === o.c.toUpperCase() || c.code === o.c); if (!cr) bad('Unknown course');
     const sess = cr.ty ? cr.ty === 'Sessional' : (cr.cr < 2 || /lab|sessional/i.test(cr.t)), ty = ['Quiz', 'Lab test', 'Term final'].includes(o.ty) ? o.ty : 'CT';
     if (sess && !['Quiz', 'Lab test'].includes(ty)) bad('Sessional courses only have a Quiz and Lab tests'); if (!sess && ['Quiz', 'Lab test'].includes(ty)) bad('Quizzes and lab tests are only for sessional courses');
-    if (['Quiz', 'Term final'].includes(ty) && all_("SELECT id,data FROM items WHERE kind='ct'").some(r => { const x = JSON.parse(r.data); return r.id !== selfId && x.c === cr.code && (x.ty || 'CT') === ty; })) bad(cr.code + ' already has a ' + ty);
-    o.c = cr.code; o.ty = ty;
-    // CT number: 1..5; blank = next free number for this course (CTs only)
-    if (ty !== 'CT') o.n = ''; else { const nn = Math.floor(+o.n); if (nn >= 1 && nn <= 5) o.n = String(nn); else { const used = all_("SELECT id,data FROM items WHERE kind='ct'").filter(r => r.id !== selfId).map(r => JSON.parse(r.data)).filter(x => x.c === cr.code && (x.ty || 'CT') === 'CT').map(x => +x.n || 0); o.n = String(Math.min(5, Math.max(0, ...used) + 1)); } } }
+    o.c = cr.code; o.ty = ty; checkLimit(cr, ty, selfId);
+    // CT number: 1..max (credits + 1); blank = lowest free number
+    if (ty !== 'CT') o.n = ''; else { const max = ctMax(cr), used = testsOf(cr.code, 'CT', selfId).map(d => +d.n || 0), nn = Math.floor(+o.n);
+      if (nn >= 1 && nn <= max) o.n = String(nn); else { let f = 1; while (used.includes(f)) f++; o.n = String(Math.min(max, f)); } } }
   if (kind === 'node') { need('t'); o.t = o.t.replace(/[\\/]+/g, '-'); o.ty = o.ty === 'link' ? 'link' : 'folder'; o.p = o.p || ''; if (o.p && !one("SELECT 1 x FROM items WHERE kind='node' AND id=?", o.p)) bad('Bad folder'); if (o.ty === 'link') { need('u'); o.u = normUrl(o.u); } o.sz = 0; }
   if (kind === 'res') o.p = o.p || '';
   if (kind === 'poll') o.cl = Math.min(168, Math.max(1, +o.cl || 24));
@@ -527,7 +539,7 @@ async function api(req, res, m, p) {
     if (m === 'PUT') { admin(); if (!['event', 'ct', 'vac', 'routine'].includes(row.kind)) bad('Not editable'); const old = JSON.parse(row.data), o = clean(row.kind, { ...old, ...b }, row.id), nd = { ...old, ...o };
       if (row.kind === 'ct') nd.done = old.done || 0; if (row.kind === 'event') nd.sh = old.sh || 1;
       run('UPDATE items SET data=? WHERE id=?', JSON.stringify(nd), row.id); return send(res, 200, { ok: 1 }); }
-    if (m === 'PATCH') { admin(); const d = JSON.parse(row.data), wasCancelled = !!d.x; if (row.kind === 'ct') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'event') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'notice' || row.kind === 'msg') d.pin = b.pin ? 1 : 0; else bad('Not editable'); run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); if (row.kind === 'ct' && wasCancelled !== !!d.x) pushAlert(u.id, 'ct', d, row.id + (d.x ? 'x' : 'r')); if (row.kind === 'event' && wasCancelled !== !!d.x) pushAlert(u.id, 'event', d, row.id + (d.x ? 'x' : 'r')); return send(res, 200, { ok: 1 }); }
+    if (m === 'PATCH') { admin(); const d = JSON.parse(row.data), wasCancelled = !!d.x; if (row.kind === 'ct') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { if (!b.x && wasCancelled) { const cc = all_("SELECT data FROM items WHERE kind='course'").map(r => JSON.parse(r.data)).find(c => c.code === d.c); if (cc) checkLimit(cc, d.ty || 'CT', row.id, true); } d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'event') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { if (!b.x && wasCancelled && d.k === 'ct') checkEventTest(d, row.id, true); d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'notice' || row.kind === 'msg') d.pin = b.pin ? 1 : 0; else bad('Not editable'); run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); if (row.kind === 'ct' && wasCancelled !== !!d.x) pushAlert(u.id, 'ct', d, row.id + (d.x ? 'x' : 'r')); if (row.kind === 'event' && wasCancelled !== !!d.x) pushAlert(u.id, 'event', d, row.id + (d.x ? 'x' : 'r')); return send(res, 200, { ok: 1 }); }
     // legacy personal calendar events (created before the calendar became admin-only) can still be removed by their owner
     const legacy = row.kind === 'event' && row.owner === u.id && !JSON.parse(row.data).sh;
     if (!legacy) { if (row.kind === 'msg') { if (!isStaff(u) && row.owner !== u.id) throw { code: 403, error: 'You can only delete your own messages' }; } else if (row.kind === 'photo') { if (!isStaff(u) && row.owner !== u.id) throw { code: 403, error: 'You can only delete your own photos' }; } else if (ADMIN.has(row.kind) || row.kind === 'fb') admin(); else throw { code: 403, error: 'Not allowed' }; }
