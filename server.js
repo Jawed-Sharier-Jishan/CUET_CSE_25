@@ -40,12 +40,12 @@ webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:u2504081@student.cu
 const pushAlert = (owner, kind, data, id) => {
   let title, body;
   if (kind === 'notice') { title = 'New notice: ' + data.t; body = data.b; }
-  else if (kind === 'ct') { title = (data.x ? 'Test cancelled: ' : 'New test: ') + data.c; body = (data.ty || 'CT') + ' · ' + data.t + ' · ' + data.d + (data.tm ? ' ' + data.tm : ''); }
+  else if (kind === 'ct') { title = (data.x ? 'Test cancelled: ' : data.rs ? 'Test rescheduled: ' : 'New test: ') + data.c; body = (data.ty || 'CT') + ' · ' + data.t + ' · ' + data.d + (data.tm ? ' ' + data.tm : ''); }
   else if (kind === 'ctstart') { title = (data.ty || 'CT') + ' starts now: ' + data.c; body = data.t + ' · ' + (data.tm || ctDefaultTime(data)); }
   else if (kind === 'poll') { title = 'New poll'; body = data.q; }
   else if (kind === 'pollres') { title = 'Poll results: ' + data.q; body = data.res; }
   else if (kind === 'cancel' && !data.rm) { title = (data.k === 'Lab' ? 'Lab' : 'Class') + ' cancelled: ' + data.c; body = data.d + ' · ' + data.s + '-' + data.e; }
-  else if (kind === 'event' && 'x' in data) { title = (data.x ? 'Cancelled: ' : 'Restored: ') + data.t; body = data.d + (data.s ? ' · ' + data.s : ''); }
+  else if (kind === 'event' && 'x' in data) { title = (data.x ? 'Cancelled: ' : data.rs ? 'Rescheduled: ' : 'Restored: ') + data.t; body = data.d + (data.s ? ' · ' + data.s : ''); }
   else if (kind === 'node' && data.ty !== 'folder') { title = data.ty === 'link' ? 'New link' : 'New file'; body = data.t; }
   else if (kind === 'msg') { const sn = one('SELECT name FROM users WHERE id=?', owner); const room = data.r === 'U' ? 'Everyone' : data.r; title = (sn && sn.name || owner) + ' · Chat (' + room + ')'; body = data.img ? (data.t ? 'Photo: ' + data.t : 'Sent a photo') : ('fn' in data && (data.fn || data.once)) ? 'File: ' + (data.once ? 'view-once file' : data.fn) + (data.t ? ': ' + data.t : '') : data.t; }
   else return;
@@ -539,7 +539,15 @@ async function api(req, res, m, p) {
     if (m === 'PUT') { admin(); if (!['event', 'ct', 'vac', 'routine'].includes(row.kind)) bad('Not editable'); const old = JSON.parse(row.data), o = clean(row.kind, { ...old, ...b }, row.id), nd = { ...old, ...o };
       if (row.kind === 'ct') nd.done = old.done || 0; if (row.kind === 'event') nd.sh = old.sh || 1;
       run('UPDATE items SET data=? WHERE id=?', JSON.stringify(nd), row.id); return send(res, 200, { ok: 1 }); }
-    if (m === 'PATCH') { admin(); const d = JSON.parse(row.data), wasCancelled = !!d.x; if (row.kind === 'ct') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { if (!b.x && wasCancelled) { const cc = all_("SELECT data FROM items WHERE kind='course'").map(r => JSON.parse(r.data)).find(c => c.code === d.c); if (cc) checkLimit(cc, d.ty || 'CT', row.id, true); } d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'event') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { if (!b.x && wasCancelled && d.k === 'ct') checkEventTest(d, row.id, true); d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'notice' || row.kind === 'msg') d.pin = b.pin ? 1 : 0; else bad('Not editable'); run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); if (row.kind === 'ct' && wasCancelled !== !!d.x) pushAlert(u.id, 'ct', d, row.id + (d.x ? 'x' : 'r')); if (row.kind === 'event' && wasCancelled !== !!d.x) pushAlert(u.id, 'event', d, row.id + (d.x ? 'x' : 'r')); return send(res, 200, { ok: 1 }); }
+    if (m === 'PATCH') { admin(); const d = JSON.parse(row.data), wasCancelled = !!d.x;
+      if (b.rs) { // reschedule = give a cancelled test a new date/time and bring it back (same limit checks as Restore)
+        if (!(row.kind === 'ct' || (row.kind === 'event' && d.k === 'ct'))) bad('Only tests can be rescheduled');
+        if (!wasCancelled) bad('Only cancelled tests can be rescheduled'); if (!DR.test(String(b.d || ''))) bad('Pick the new date'); b.x = 0; }
+      const reschedule = () => { d.d = b.d; d.rts = Date.now(); d.done = 0; delete d.sn; delete d.rn;
+        if (row.kind === 'ct') d.tm = TR.test(b.tm || '') ? b.tm : '';
+        else { const old = d.s, m = z => +z.slice(0, 2) * 60 + +z.slice(3); d.s = TR.test(b.s || '') ? b.s : '';
+          if (d.e) { const ne = old && d.s ? m(d.e) - m(old) + m(d.s) : -1; d.e = ne > m(d.s) && ne < 1440 ? String(Math.floor(ne / 60)).padStart(2, '0') + ':' + String(ne % 60).padStart(2, '0') : ''; } } };
+      if (row.kind === 'ct') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { if (!b.x && wasCancelled) { const cc = all_("SELECT data FROM items WHERE kind='course'").map(r => JSON.parse(r.data)).find(c => c.code === d.c); if (cc) checkLimit(cc, d.ty || 'CT', row.id, true); } d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'event') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { if (!b.x && wasCancelled && d.k === 'ct') checkEventTest(d, row.id, true); d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'notice' || row.kind === 'msg') d.pin = b.pin ? 1 : 0; else bad('Not editable'); if (b.rs) reschedule(); run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); if (row.kind === 'ct' && wasCancelled !== !!d.x) pushAlert(u.id, 'ct', b.rs ? { ...d, rs: 1 } : d, row.id + (d.x ? 'x' : 'r') + (b.rs ? d.rts : '')); if (row.kind === 'event' && wasCancelled !== !!d.x) pushAlert(u.id, 'event', b.rs ? { ...d, rs: 1 } : d, row.id + (d.x ? 'x' : 'r') + (b.rs ? d.rts : '')); return send(res, 200, { ok: 1 }); }
     // legacy personal calendar events (created before the calendar became admin-only) can still be removed by their owner
     const legacy = row.kind === 'event' && row.owner === u.id && !JSON.parse(row.data).sh;
     if (!legacy) { if (row.kind === 'msg') { if (!isStaff(u) && row.owner !== u.id) throw { code: 403, error: 'You can only delete your own messages' }; } else if (row.kind === 'photo') { if (!isStaff(u) && row.owner !== u.id) throw { code: 403, error: 'You can only delete your own photos' }; } else if (ADMIN.has(row.kind) || row.kind === 'fb') admin(); else throw { code: 403, error: 'Not allowed' }; }
