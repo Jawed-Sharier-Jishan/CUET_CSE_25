@@ -47,7 +47,7 @@ const pushAlert = (owner, kind, data, id) => {
   else if (kind === 'cancel' && !data.rm) { title = (data.k === 'Lab' ? 'Lab' : 'Class') + ' cancelled: ' + data.c; body = data.d + ' · ' + data.s + '-' + data.e; }
   else if (kind === 'event' && 'x' in data) { title = (data.x ? 'Cancelled: ' : 'Restored: ') + data.t; body = data.d + (data.s ? ' · ' + data.s : ''); }
   else if (kind === 'node' && data.ty !== 'folder') { title = data.ty === 'link' ? 'New link' : 'New file'; body = data.t; }
-  else if (kind === 'msg') { const sn = one('SELECT name FROM users WHERE id=?', owner); const room = data.r === 'U' ? 'Everyone' : data.r; title = (sn && sn.name || owner) + ' · Chat (' + room + ')'; body = data.img ? (data.t ? '📷 ' + data.t : '📷 Sent a photo') : data.t; }
+  else if (kind === 'msg') { const sn = one('SELECT name FROM users WHERE id=?', owner); const room = data.r === 'U' ? 'Everyone' : data.r; title = (sn && sn.name || owner) + ' · Chat (' + room + ')'; body = data.img ? (data.t ? '📷 ' + data.t : '📷 Sent a photo') : ('fn' in data && (data.fn || data.once)) ? '📎 ' + (data.once ? 'View-once file' : data.fn) + (data.t ? ': ' + data.t : '') : data.t; }
   else return;
   const category = ({ msg: 'chat', notice: 'notices', ct: 'tests', ctstart: 'tests', poll: 'polls', pollres: 'polls', node: 'resources', cancel: 'notices', event: 'notices' })[kind];
   const target = data.for || 'All';
@@ -189,6 +189,54 @@ async function zip(es) { const out = [], cd = []; let off = 0;
 const ROOMS = ['U', 'A', 'B', 'A1', 'A2', 'B1', 'B2'];
 // Admins can read and post in every room; students only in the batch room and their own section / group.
 const roomOk = (r, u) => { if (isStaff(u)) return ROOMS.includes(r); const pl = place(u.id); return r === 'U' || (r !== '' && (r === pl.sec || r === pl.g)); };
+// ---- chat attachments (any file type, optional "view once") -----------------------------
+// Files are never public: they are streamed through /api/chatfile/:id after the room check.
+// View once: every recipient can open it a single time; only the developer (CID) can open it again and again.
+const CHAT_MAX = (+process.env.CHAT_FILE_MAX_MB || 10) * 1048576;
+const INLINE_OK = /^(image\/(jpeg|png|gif|webp)|video\/(mp4|webm)|audio\/(mpeg|mp4|ogg|wav|webm)|application\/pdf)$/;
+const dropMsg = row => { try { const d = JSON.parse(row.data);
+  if (d.imgAsset) deleteCloudAsset(d.imgAsset).catch(e => console.warn('Cloudinary chat cleanup failed:', e.message));
+  if (d.file) { if (d.file.cloud) deleteCloudAsset(d.file.cloud).catch(e => console.warn('Cloudinary chat cleanup failed:', e.message)); try { fs.unlinkSync(path.join(UP, 'm_' + row.id)); } catch {} } } catch {} };
+const msgPub = (raw, u) => { const o = JSON.parse(raw), seen = o.seen || {}; delete o.seen;
+  if (o.file) { o.file = { n: o.file.n, sz: o.file.sz, ty: o.file.ty }; if (o.once) { o.vw = seen[u.id] ? 1 : 0; if (u.id === CID) o.vc = Object.keys(seen).length; } }
+  return o; };
+async function chatUpload(req, res) {
+  const U = me(req); if (!U) throw { code: 401, error: 'Please log in' };
+  const q = new URL(req.url, 'http://x').searchParams, room = q.get('room') || '', t = (q.get('t') || '').trim().slice(0, 500), once = q.get('once') === '1';
+  const n = (q.get('n') || 'file').replace(/[\\/\x00-\x1f]+/g, '-').slice(0, 120) || 'file';
+  if (!roomOk(room, U)) throw { code: 403, error: 'Not your room' };
+  const ch = req.rawBody ? [req.rawBody] : []; let sz = ch.length ? req.rawBody.length : 0; // rawBody: Firebase Functions has already read the stream
+  if (!ch.length) for await (const c of req) { sz += c.length; if (sz > CHAT_MAX) { req.destroy(); throw { code: 413, error: 'Max file size is ' + Math.round(CHAT_MAX / 1048576) + ' MB' }; } ch.push(c); }
+  if (sz > CHAT_MAX) throw { code: 413, error: 'Max file size is ' + Math.round(CHAT_MAX / 1048576) + ' MB' };
+  const buf = Buffer.concat(ch); if (!buf.length) bad('Empty file');
+  let ty = String(q.get('ty') || '').toLowerCase().slice(0, 80); if (!INLINE_OK.test(ty)) ty = 'application/octet-stream';
+  const file = { n, sz: buf.length, ty };
+  if (cloudinary) file.cloud = cloudAsset(await uploadCloudBuffer(buf, { resource_type: 'raw', type: 'authenticated', public_id: 'cuet-cse25/chat/' + rid() + '_' + n.replace(/[^\w.\-]+/g, '_') }));
+  const mid = put('msg', U.id, { r: room, t, file, ...(once ? { once: 1, seen: {} } : {}) });
+  if (!cloudinary) fs.writeFileSync(path.join(UP, 'm_' + mid), buf);
+  pushAlert(U.id, 'msg', { r: room, t, img: false, fn: once ? '' : n, once }, mid); return send(res, 200, { ok: 1 });
+}
+async function chatDownload(req, res, id, U) {
+  const row = one("SELECT id,owner,data FROM items WHERE kind='msg' AND id=?", id); if (!row) throw { code: 404, error: 'Message not found (it may have expired)' };
+  const d = JSON.parse(row.data); if (!d.file) throw { code: 404, error: 'No file' }; if (!roomOk(d.r, U)) throw { code: 403, error: 'Not your room' };
+  const dev = U.id === CID; let marked = false;
+  if (d.once && !dev) {
+    if (row.owner === U.id) throw { code: 403, error: 'You sent this view-once file. Only the people you sent it to can open it.' };
+    d.seen = d.seen || {}; if (d.seen[U.id]) throw { code: 410, error: 'You already opened this view-once file' };
+    d.seen[U.id] = Date.now(); run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); marked = true; // marked before any await, so two quick taps can't both succeed
+  }
+  let buf;
+  try {
+    if (d.file.cloud) { const r = await fetch(cloudinary.url(d.file.cloud.publicId, { resource_type: 'raw', type: 'authenticated', sign_url: true, secure: true })); if (!r.ok) throw new Error('storage ' + r.status); buf = Buffer.from(await r.arrayBuffer()); }
+    else buf = fs.readFileSync(path.join(UP, 'm_' + row.id));
+  } catch (e) {
+    if (marked) { delete d.seen[U.id]; run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); }
+    console.warn('chat file read failed:', e.message); throw { code: 502, error: 'Could not load the file. Try again.' };
+  }
+  const dl = new URL(req.url, 'http://x').searchParams.get('dl') === '1', inline = INLINE_OK.test(d.file.ty) && !dl;
+  res.writeHead(200, { 'Content-Type': d.file.ty, 'Content-Length': buf.length, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store', 'Content-Disposition': (inline ? 'inline' : 'attachment') + "; filename*=UTF-8''" + encodeURIComponent(d.file.n) });
+  return res.end(buf);
+}
 async function upload(req, res) {
   const U = me(req); if (!U) throw { code: 401, error: 'Please log in' }; if (!isStaff(U)) throw { code: 403, error: 'Only the class admin can do this' };
   const q = new URL(req.url, 'http://x').searchParams, p = q.get('p') || '', n = (q.get('n') || 'file').replace(/[\\/]+/g, '-').slice(0, 120);
@@ -274,7 +322,7 @@ function startSession(req, res, uid) {
 // ---- state sent to the dashboard ---------------------------------------------
 function state(u) {
   const expiredMsgs = all_("SELECT id,data FROM items WHERE kind='msg' AND ts<?", Date.now() - 6048e5);
-  expiredMsgs.forEach(row => { const asset = JSON.parse(row.data).imgAsset; if (asset) deleteCloudAsset(asset).catch(error => console.warn('Cloudinary chat cleanup failed:', error.message)); });
+  expiredMsgs.forEach(dropMsg);
   run("DELETE FROM items WHERE kind='msg' AND ts<?", Date.now() - 6048e5);
   all_("SELECT id,data,ts FROM items WHERE kind='poll'").forEach(r => { if (Date.now() > r.ts + ((+JSON.parse(r.data).cl || 24) + 72) * 36e5) { run('DELETE FROM items WHERE id=?', r.id); run('DELETE FROM votes WHERE poll=?', r.id); } });
   const items = all_("SELECT * FROM items WHERE kind NOT IN ('msg','rd') ORDER BY ts,rowid").map(r => ({ id: r.id, kind: r.kind, owner: r.owner, ts: r.ts, ...JSON.parse(r.data) }));
@@ -283,7 +331,7 @@ function state(u) {
   const cu = one('SELECT id,name,profile FROM users WHERE id=?', CID), cp = cu ? JSON.parse(cu.profile || '{}') : {};
   const creator = { id: CID, name: cu ? cu.name : '', reg: !!cu, ...place(CID), photo: cp.photo || devFallbackPhoto(), fb: cp.fb || '', ig: cp.ig || '', li: cp.li || '', ot: cp.ot || '', school: cp.school || '', college: cp.college || '', dist: cp.dist || '', town: cp.town || '' };
   const rdRow = all_("SELECT data FROM items WHERE kind='rd' AND owner=?", u.id)[0], rdd = rdRow ? JSON.parse(rdRow.data) : null;
-  return { creator, role: isStaff(u) ? 'admin' : 'student', isCreator: u.id === CID, tier: { ...flags(u.id === CID ? mkRole(true, flags(u.role).cr) : u.role) }, read: rdd ? { set: 1, base: rdd.base, ids: rdd.ids } : { set: 0, base: 0, ids: {} }, ...place(u.id), users: all_('SELECT id,name,role,profile FROM users ORDER BY id').map(x => { const q = JSON.parse(x.profile || '{}'); const fl = flags(x.id === CID ? mkRole(true, flags(x.role).cr) : x.role); return { id: x.id, name: x.name, role: x.id === CID || x.role !== 'student' ? 'admin' : 'student', adm: fl.adm, cr: fl.cr, ...place(x.id), fb: q.fb || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '' }; }), profile: { ...pr, name: u.name, email: pr.email || '', phone: pr.phone || '', blood: pr.blood || '', term: st.term || '', aEnd: st.aEnd || 66, bEnd: st.bEnd || 132, ss: st.ss || '', se: st.se || '' },
+  return { creator, role: isStaff(u) ? 'admin' : 'student', isCreator: u.id === CID, tier: { ...flags(u.id === CID ? mkRole(true, flags(u.role).cr) : u.role) }, read: rdd ? { set: 1, base: rdd.base, ids: rdd.ids } : { set: 0, base: 0, ids: {} }, ...place(u.id), users: all_('SELECT id,name,role,profile FROM users ORDER BY id').map(x => { const q = JSON.parse(x.profile || '{}'); const fl = flags(x.id === CID ? mkRole(true, flags(x.role).cr) : x.role); return { id: x.id, name: x.name, role: x.id === CID || x.role !== 'student' ? 'admin' : 'student', adm: fl.adm, cr: fl.cr, ...place(x.id), fb: q.fb || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '', ...(q.photo ? { ph: crypto.createHash('sha1').update(q.photo).digest('hex').slice(0, 8) } : {}) }; }), profile: { ...pr, name: u.name, email: pr.email || '', phone: pr.phone || '', blood: pr.blood || '', term: st.term || '', aEnd: st.aEnd || 66, bEnd: st.bEnd || 132, ss: st.ss || '', se: st.se || '' },
     courses: of('course').map(c => { const a = att.find(x => x.c === c.id) || {}; return { id: c.id, code: c.code, t: c.t, cr: c.cr, th: c.th, ty: c.ty || '', p: a.p || 0, h: a.h || 0 }; }),
     routine: of('routine'), nodes: of('node'), marks: of('mark').filter(m => m.owner === u.id), fb: isStaff(u) ? of('fb').map(f => ({ ...f, by: f.an ? 'Anonymous' : (names[f.owner] || f.owner), ...(f.an && u.id === CID ? { real: (names[f.owner] || '') + ' (' + f.owner + ')' } : {}), owner: undefined })) : [],
     gallery: of('photo').map(g => ({ id: g.id, ts: g.ts, cap: g.cap || '', al: g.al || 'General', by: names[g.owner] || g.owner, mine: g.owner === u.id })), cts: of('ct'), cancels: of('cancel'), res: of('res'), vac: of('vac'), notices: of('notice'), events: of('event').filter(e => e.sh || e.owner === u.id),
@@ -298,6 +346,7 @@ const readBody = req => new Promise((ok, no) => { let s = ''; req.on('data', c =
 async function api(req, res, m, p) {
   if (m === 'PUT' && p === '/api/up') return upload(req, res);
   if (m === 'PUT' && p === '/api/gup') return gupload(req, res);
+  if (m === 'PUT' && p === '/api/chatfile') return chatUpload(req, res);
   let b = {};
   if (m !== 'GET') { if (!/application\/json/.test(req.headers['content-type'] || '')) bad('JSON only'); b = await readBody(req); }
   const U = me(req), auth = () => { if (!U) throw { code: 401, error: 'Please log in' }; return U; };
@@ -430,14 +479,15 @@ async function api(req, res, m, p) {
   if (m === 'POST' && p === '/api/mark') { const u = auth(), c = one("SELECT id FROM items WHERE kind='ct' AND id=?", String(b.ct)); if (!c) bad('Unknown test'); const v = String(b.v ?? '').trim().slice(0, 6); if (v !== '' && !(+v >= 0)) bad('Marks must be a number');
     let owner = u.id; const want = String(b.uid || '').trim(); if (want && want !== u.id) { if (!isStaff(u)) throw { code: 403, error: 'Only the class admin can add marks for others' }; if (!one('SELECT 1 x FROM users WHERE id=?', want)) bad('No student with ID ' + want); owner = want; }
     all_("SELECT id,data FROM items WHERE kind='mark' AND owner=?", owner).filter(r => JSON.parse(r.data).ct === c.id).forEach(r => run('DELETE FROM items WHERE id=?', r.id)); if (v !== '') put('mark', owner, { ct: c.id, v }); return send(res, 200, { ok: 1 }); }
+  if (m === 'GET' && (x = p.match(/^\/api\/chatfile\/(\w+)$/))) return chatDownload(req, res, x[1], auth());
   if (m === 'GET' && (x = p.match(/^\/api\/chat\/(\w+)$/))) { const u = auth(), r = x[1]; if (!roomOk(r, u)) throw { code: 403, error: 'Not your room' };
-    run("DELETE FROM items WHERE kind='msg' AND ts<?", Date.now() - 6048e5); const nm = Object.fromEntries(all_('SELECT id,name FROM users').map(y => [y.id, y.name])), ad = Object.fromEntries(all_('SELECT id,role FROM users').map(y => [y.id, y.id === CID ? 'admin' : y.role === 'student' ? '' : /admin/.test(y.role) ? 'admin' : 'cr']));
-    return send(res, 200, all_("SELECT * FROM items WHERE kind='msg' ORDER BY ts DESC LIMIT 400").map(y => ({ ...JSON.parse(y.data), id: y.id, ts: y.ts, u: y.owner, n: nm[y.owner] || y.owner, a: ad[y.owner] || '' })).filter(y => y.r === r).slice(0, 80).reverse()); }
+    all_("SELECT id,data FROM items WHERE kind='msg' AND ts<?", Date.now() - 6048e5).forEach(dropMsg); run("DELETE FROM items WHERE kind='msg' AND ts<?", Date.now() - 6048e5); const nm = Object.fromEntries(all_('SELECT id,name FROM users').map(y => [y.id, y.name])), ad = Object.fromEntries(all_('SELECT id,role FROM users').map(y => [y.id, y.id === CID ? 'admin' : y.role === 'student' ? '' : /admin/.test(y.role) ? 'admin' : 'cr']));
+    return send(res, 200, all_("SELECT * FROM items WHERE kind='msg' ORDER BY ts DESC LIMIT 400").map(y => ({ ...msgPub(y.data, u), id: y.id, ts: y.ts, u: y.owner, n: nm[y.owner] || y.owner, a: ad[y.owner] || '' })).filter(y => y.r === r).slice(0, 80).reverse()); }
   if (m === 'POST' && p === '/api/chat') { const u = auth(), r = String(b.room), t = String(b.t || '').trim().slice(0, 500); let img = /^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(b.img || '') && b.img.length < 2e5 ? b.img : '', imgAsset;
     if (!roomOk(r, u)) throw { code: 403, error: 'Not your room' }; if (!t && !img) bad('Empty message');
     if (cloudinary && img) { const result = await uploadCloudBuffer(Buffer.from(img.slice(img.indexOf(',') + 1), 'base64'), { folder: 'cuet-cse25/chat', resource_type: 'image' }); imgAsset = cloudAsset(result); img = result.secure_url; }
     const mid = put('msg', u.id, { r, t, img, ...(imgAsset ? { imgAsset } : {}) }); pushAlert(u.id, 'msg', { r, t, img: !!img }, mid); return send(res, 200, { ok: 1 }); }
-  if (m === 'POST' && p === '/api/chatclear') { admin(); const r = String(b.room); if (!ROOMS.includes(r)) bad('Unknown room'); for (const y of all_("SELECT id,data FROM items WHERE kind='msg'")) if (JSON.parse(y.data).r === r) { await deleteCloudAsset(JSON.parse(y.data).imgAsset); run('DELETE FROM items WHERE id=?', y.id); } return send(res, 200, { ok: 1 }); }
+  if (m === 'POST' && p === '/api/chatclear') { admin(); const r = String(b.room); if (!ROOMS.includes(r)) bad('Unknown room'); for (const y of all_("SELECT id,data FROM items WHERE kind='msg'")) if (JSON.parse(y.data).r === r) { dropMsg(y); run('DELETE FROM items WHERE id=?', y.id); } return send(res, 200, { ok: 1 }); }
   if (m === 'GET' && (x = p.match(/^\/api\/user\/([A-Za-z0-9_-]+)$/))) { const u = auth(), t = one('SELECT id,name,role,profile FROM users WHERE id=?', x[1]); if (!t) throw { code: 404, error: 'Not found' }; const q = JSON.parse(t.profile || '{}'), priv = isStaff(u) || u.id === t.id;
     const fl = flags(t.id === CID ? mkRole(true, flags(t.role).cr) : t.role); return send(res, 200, { id: t.id, name: t.name, role: t.id === CID || t.role !== 'student' ? 'admin' : 'student', adm: fl.adm, cr: fl.cr, creator: t.id === CID, ...place(t.id), photo: q.photo || '', fb: q.fb || '', ig: q.ig || '', li: q.li || '', ot: q.ot || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '', bday: /^\d{4}-\d\d-\d\d$/.test(q.dob || '') ? q.dob.slice(5) : '', ...(priv ? { email: q.email || '', phone: q.phone || '', blood: q.blood || '' } : {}) }); }
   if (m === 'GET' && (x = p.match(/^\/api\/dl\/(\w+)$/))) { auth(); const ns = nodes(), n = ns.find(y => y.id === x[1]); if (!n || n.ty === 'link') throw { code: 404, error: 'Not found' };
@@ -461,7 +511,7 @@ async function api(req, res, m, p) {
     if (!legacy) { if (row.kind === 'msg') { if (!isStaff(u) && row.owner !== u.id) throw { code: 403, error: 'You can only delete your own messages' }; } else if (row.kind === 'photo') { if (!isStaff(u) && row.owner !== u.id) throw { code: 403, error: 'You can only delete your own photos' }; } else if (ADMIN.has(row.kind) || row.kind === 'fb') admin(); else throw { code: 403, error: 'Not allowed' }; }
     await deleteCloudAsset(JSON.parse(row.data).cloud);
     run('DELETE FROM items WHERE id=?', row.id);
-    if (row.kind === 'msg') await deleteCloudAsset(JSON.parse(row.data).imgAsset);
+    if (row.kind === 'msg') dropMsg(row);
     if (row.kind === 'node') { const ns = nodes(), dead = [row.id]; for (let i = 0; i < dead.length; i++) ns.filter(y => y.p === dead[i]).forEach(y => dead.push(y.id)); for (const id of dead) { const child = ns.find(y => y.id === id); await deleteCloudAsset(child?.cloud); run('DELETE FROM items WHERE id=?', id); try { fs.unlinkSync(path.join(UP, id)); } catch {} } }
     if (row.kind === 'photo') { try { fs.unlinkSync(path.join(UP, row.id + '.thumb.jpg')); } catch {} }
     if (row.kind === 'photo') { try { fs.unlinkSync(path.join(UP, row.id)); } catch {} }
