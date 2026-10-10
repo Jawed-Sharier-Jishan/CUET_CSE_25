@@ -311,8 +311,9 @@ function clean(kind, d) {
 
 // ---- auth ---------------------------------------------------------------
 const hash = (p, s = crypto.randomBytes(16).toString('hex')) => s + ':' + crypto.scryptSync(p, s, 32).toString('hex');
-const verify = (p, h) => { const [s, x] = h.split(':'); return crypto.timingSafeEqual(Buffer.from(hash(p, s).split(':')[1], 'hex'), Buffer.from(x, 'hex')); };
-const tries = new Map();
+const verify = (p, h) => { try { const [s, x] = String(h || '').split(':'); if (!s || !/^[0-9a-f]{64}$/i.test(x || '')) return false; return crypto.timingSafeEqual(Buffer.from(hash(p, s).split(':')[1], 'hex'), Buffer.from(x, 'hex')); } catch { return false; } };
+const tries = new Map(), regTries = new Map();
+function regThrottle(ip) { const t = regTries.get(ip) || { n: 0, at: Date.now() }; if (Date.now() - t.at > 36e5) { t.n = 0; t.at = Date.now(); } regTries.set(ip, t); if (t.n >= 30) throw { code: 429, error: 'Too many sign-ups from this network. Try again later.' }; t.n++; }
 function throttle(ip) { const t = tries.get(ip) || { n: 0, at: Date.now() }; if (Date.now() - t.at > 3e5) { t.n = 0; t.at = Date.now(); } tries.set(ip, t); if (t.n >= 10) throw { code: 429, error: 'Too many attempts. Try again in a few minutes.' }; return t; }
 const cookieOf = (req, k) => (req.headers.cookie || '').split(';').map(s => s.trim().split('=')).find(x => x[0] === k)?.[1];
 const me = req => { const t = cookieOf(req, 'sid'), u = t ? one('SELECT u.* FROM sessions s JOIN users u ON u.id=s.uid WHERE s.token=? AND s.exp>?', t, Date.now()) : null; return u && inRange(u.id) ? u : null; };
@@ -416,8 +417,9 @@ async function api(req, res, m, p) {
   if (m === 'POST' && (p === '/api/register' || p === '/api/login')) {
     const t = throttle(ip), id = String(b.id || '').trim(), pw = String(b.password || '');
     if (p === '/api/register') {
+      regThrottle(ip);
       if (!/^[A-Za-z0-9_-]{3,20}$/.test(id)) bad('ID must be 3-20 letters, digits, - or _');
-      if (pw.length < 6) bad('Password must be at least 6 characters');
+      if (pw.length < 8) bad('Password must be at least 8 characters');
       if (!inRange(id)) bad('Only roll numbers 2504001 to 2504132 can register');
       if (one('SELECT 1 x FROM users WHERE id=?', id)) throw { code: 409, error: 'That ID is already registered' };
       run('INSERT INTO users(id,name,pw,role) VALUES(?,?,?,?)', id, String(b.name || id).trim().slice(0, 60) || id, hash(pw), id === CID ? 'admin' : 'student');
@@ -482,6 +484,15 @@ async function api(req, res, m, p) {
   }
     run('UPDATE users SET profile=? WHERE id=?', JSON.stringify(pr), u.id); return send(res, 200, { ok: 1 }); }
   if (m === 'POST' && p === '/api/password') { const u = auth(), pw = String(b.n || ''); if (!verify(String(b.o || ''), u.pw)) bad('Current password is wrong'); if (pw.length < 8) bad('New password needs 8+ characters'); run('UPDATE users SET pw=? WHERE id=?', hash(pw), u.id); return send(res, 200, { ok: 1 }); }
+  if (m === 'POST' && p === '/api/resetpw') { // admin resets a student's password to a one-time temporary one; admins reset students only, the developer resets anyone but themselves
+    const u = auth(); if (u.id !== CID && !flags(u.role).adm) throw { code: 403, error: 'Only an admin can reset passwords' };
+    const t = one('SELECT id,role FROM users WHERE id=?', String(b.id || '')); if (!t) bad('Unknown user');
+    if (t.id === u.id) bad('Change your own password from your profile');
+    if (u.id !== CID && (t.id === CID || flags(t.role).adm)) throw { code: 403, error: 'Only the site developer can reset an admin\'s password' };
+    const A = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789', temp = Array.from(crypto.randomBytes(10), c => A[c % A.length]).join('');
+    run('UPDATE users SET pw=? WHERE id=?', hash(temp), t.id); run('DELETE FROM sessions WHERE uid=?', t.id);
+    return send(res, 200, { ok: 1, id: t.id, temp });
+  }
   if (m === 'POST' && p === '/api/mark') { const u = auth(), c = one("SELECT id FROM items WHERE kind='ct' AND id=?", String(b.ct)); if (!c) bad('Unknown test'); const v = String(b.v ?? '').trim().slice(0, 6); if (v !== '' && !(+v >= 0)) bad('Marks must be a number');
     let owner = u.id; const want = String(b.uid || '').trim(); if (want && want !== u.id) { if (!isStaff(u)) throw { code: 403, error: 'Only the class admin can add marks for others' }; if (!one('SELECT 1 x FROM users WHERE id=?', want)) bad('No student with ID ' + want); owner = want; }
     all_("SELECT id,data FROM items WHERE kind='mark' AND owner=?", owner).filter(r => JSON.parse(r.data).ct === c.id).forEach(r => run('DELETE FROM items WHERE id=?', r.id)); if (v !== '') put('mark', owner, { ct: c.id, v }); return send(res, 200, { ok: 1 }); }
@@ -532,12 +543,14 @@ async function api(req, res, m, p) {
 const MT = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json' };
 async function handleRequest(req, res) {
   try {
+    res.setHeader('X-Frame-Options', 'DENY'); res.setHeader('Content-Security-Policy', "frame-ancestors 'none'"); res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     const p = new URL(req.url, 'http://x').pathname;
     if (p.startsWith('/api/')) return await api(req, res, req.method, p);
     let f = path.join(PUB, p === '/' ? 'index.html' : decodeURIComponent(p));
     // clean URLs (/tests, /courses, /developer ...): paths without a file extension that match no real file get the app shell
-    if (!path.extname(p) && (!f.startsWith(PUB) || !fs.existsSync(f) || fs.statSync(f).isDirectory())) f = path.join(PUB, 'index.html');
-    if (!f.startsWith(PUB) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('Not found'); }
+    const inPub = x => x === PUB || x.startsWith(PUB + path.sep);
+    if (!path.extname(p) && (!inPub(f) || !fs.existsSync(f) || fs.statSync(f).isDirectory())) f = path.join(PUB, 'index.html');
+    if (!inPub(f) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); return res.end('Not found'); }
     if (path.basename(f) === 'index.html') { // fill in absolute URLs for link previews (WhatsApp, Telegram, ...)
       const origin = (process.env.SITE_URL || ((req.headers['x-forwarded-proto'] || 'http').split(',')[0].trim() + '://' + (req.headers['x-forwarded-host'] || req.headers.host || 'localhost'))).replace(/\/+$/, '');
       const html = fs.readFileSync(f, 'utf8').split('%%ORIGIN%%').join(origin.replace(/[<>"&]/g, ''));
