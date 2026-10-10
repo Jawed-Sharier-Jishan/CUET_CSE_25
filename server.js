@@ -47,7 +47,7 @@ const pushAlert = (owner, kind, data, id) => {
   else if (kind === 'cancel' && !data.rm) { title = (data.k === 'Lab' ? 'Lab' : 'Class') + ' cancelled: ' + data.c; body = data.d + ' · ' + data.s + '-' + data.e; }
   else if (kind === 'event' && 'x' in data) { title = (data.x ? 'Cancelled: ' : 'Restored: ') + data.t; body = data.d + (data.s ? ' · ' + data.s : ''); }
   else if (kind === 'node' && data.ty !== 'folder') { title = data.ty === 'link' ? 'New link' : 'New file'; body = data.t; }
-  else if (kind === 'msg') { const sn = one('SELECT name FROM users WHERE id=?', owner); const room = data.r === 'U' ? 'Everyone' : data.r; title = (sn && sn.name || owner) + ' · Chat (' + room + ')'; body = data.img ? (data.t ? '📷 ' + data.t : '📷 Sent a photo') : ('fn' in data && (data.fn || data.once)) ? '📎 ' + (data.once ? 'View-once file' : data.fn) + (data.t ? ': ' + data.t : '') : data.t; }
+  else if (kind === 'msg') { const sn = one('SELECT name FROM users WHERE id=?', owner); const room = data.r === 'U' ? 'Everyone' : data.r; title = (sn && sn.name || owner) + ' · Chat (' + room + ')'; body = data.img ? (data.t ? 'Photo: ' + data.t : 'Sent a photo') : ('fn' in data && (data.fn || data.once)) ? 'File: ' + (data.once ? 'view-once file' : data.fn) + (data.t ? ': ' + data.t : '') : data.t; }
   else return;
   const category = ({ msg: 'chat', notice: 'notices', ct: 'tests', ctstart: 'tests', poll: 'polls', pollres: 'polls', node: 'resources', cancel: 'notices', event: 'notices' })[kind];
   const target = data.for || 'All';
@@ -341,7 +341,7 @@ function state(u) {
     projects: of('project').map(p => ({ ...p, a: p.a || names[p.owner] || '—' })),
     chat: (() => { const pl = place(u.id), rooms = isStaff(u) ? ROOMS : ['U', pl.sec, pl.g].filter(Boolean); // newest chat messages from others, shown in Alerts
       return all_("SELECT id,owner,data,ts FROM items WHERE kind='msg' AND owner<>? AND ts>? ORDER BY ts DESC LIMIT 150", u.id, Date.now() - 3 * 864e5).map(r => ({ r, d: JSON.parse(r.data) })).filter(x => rooms.includes(x.d.r)).slice(0, 15)
-        .map(x => ({ id: x.r.id, ts: x.r.ts, r: x.d.r, n: names[x.r.owner] || x.r.owner, t: x.d.once ? 'View-once file' : x.d.file ? '📎 ' + x.d.file.n : x.d.img ? '📷 Photo' : String(x.d.t || '').slice(0, 90), c: x.d.t && (x.d.file || x.d.img) && !x.d.once ? String(x.d.t).slice(0, 60) : '' })); })(),
+        .map(x => ({ id: x.r.id, ts: x.r.ts, r: x.d.r, n: names[x.r.owner] || x.r.owner, t: x.d.once ? 'View-once file' : x.d.file ? 'File: ' + x.d.file.n : x.d.img ? 'Photo' : String(x.d.t || '').slice(0, 90), c: x.d.t && (x.d.file || x.d.img) && !x.d.once ? String(x.d.t).slice(0, 60) : '' })); })(),
     polls: of('poll').map(p => { const vs = votes.filter(v => v.poll === p.id), mine = vs.find(v => v.uid === u.id); return { id: p.id, ow: p.owner, q: p.q, ts: p.ts, cl: p.cl || 24, o: p.o.map((t, i) => ({ t, v: vs.filter(v => v.opt === i).length })), my: mine ? mine.opt : -1 }; }) };
 }
 
