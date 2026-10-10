@@ -268,14 +268,14 @@ async function gupload(req, res) {
   const id = put('photo', U.id, data); if (!cloudinary) fs.writeFileSync(path.join(UP, id), buf); return send(res, 200, { id });
 }
 // ---- validation -------------------------------------------------------
-const FIELDS = { course: ['code', 't', 'cr', 'th', 'ty'], routine: ['d', 's', 'e', 'c', 'k', 'for'], ct: ['c', 't', 'd', 'm', 'sy', 'ty', 'for', 'tm'], cancel: ['d', 'rid', 'rm'], vac: ['t', 'f', 'to'], notice: ['t', 'b', 'd', 'for'],
+const FIELDS = { course: ['code', 't', 'cr', 'th', 'ty'], routine: ['d', 's', 'e', 'c', 'k', 'for'], ct: ['c', 't', 'd', 'm', 'sy', 'ty', 'for', 'tm', 'n'], cancel: ['d', 'rid', 'rm'], vac: ['t', 'f', 'to'], notice: ['t', 'b', 'd', 'for'],
   res: ['t', 'u', 'c', 'p'], project: ['t', 'c', 's', 'd', 'u'], event: ['d', 't', 'for', 'k', 's', 'e'], poll: ['q', 'o', 'cl'], fb: ['t', 'c', 'an'], node: ['t', 'p', 'ty', 'u'] };
 // Only admins may change shared content (including calendar events). Students only touch their own data (attendance, profile) and may vote.
 const ADMIN = new Set(['node', 'course', 'routine', 'ct', 'vac', 'notice', 'res', 'project', 'poll', 'event', 'cancel']);
 const DR = /^\d{4}-\d\d-\d\d$/, TR = /^\d\d:\d\d$/;
 const bad = m => { throw { code: 400, error: m }; };
 const normUrl = u => { u = String(u || '').trim(); if (!/^https?:\/\//i.test(u)) u = 'https://' + u; try { return new URL(u).href; } catch { return bad('Invalid URL'); } };
-function clean(kind, d) {
+function clean(kind, d, selfId) {
   const o = {};
   for (const f of FIELDS[kind]) { const v = d[f]; if (v == null) continue; o[f] = Array.isArray(v) ? v.slice(0, 8).map(x => String(x).trim().slice(0, 80)).filter(Boolean) : String(v).trim().slice(0, 400); }
   const need = (...f) => f.forEach(x => { if (!o[x]) bad('Missing field: ' + x); });
@@ -299,8 +299,10 @@ function clean(kind, d) {
     const cr = all_("SELECT data FROM items WHERE kind='course'").map(r => JSON.parse(r.data)).find(c => c.code === o.c.toUpperCase() || c.code === o.c); if (!cr) bad('Unknown course');
     const sess = cr.ty ? cr.ty === 'Sessional' : (cr.cr < 2 || /lab|sessional/i.test(cr.t)), ty = ['Quiz', 'Lab test', 'Term final'].includes(o.ty) ? o.ty : 'CT';
     if (sess && !['Quiz', 'Lab test'].includes(ty)) bad('Sessional courses only have a Quiz and Lab tests'); if (!sess && ['Quiz', 'Lab test'].includes(ty)) bad('Quizzes and lab tests are only for sessional courses');
-    if (['Quiz', 'Term final'].includes(ty) && all_("SELECT data FROM items WHERE kind='ct'").some(r => { const x = JSON.parse(r.data); return x.c === cr.code && (x.ty || 'CT') === ty; })) bad(cr.code + ' already has a ' + ty);
-    o.c = cr.code; o.ty = ty; }
+    if (['Quiz', 'Term final'].includes(ty) && all_("SELECT id,data FROM items WHERE kind='ct'").some(r => { const x = JSON.parse(r.data); return r.id !== selfId && x.c === cr.code && (x.ty || 'CT') === ty; })) bad(cr.code + ' already has a ' + ty);
+    o.c = cr.code; o.ty = ty;
+    // CT number: 1..5; blank = next free number for this course (CTs only)
+    if (ty !== 'CT') o.n = ''; else { const nn = Math.floor(+o.n); if (nn >= 1 && nn <= 5) o.n = String(nn); else { const used = all_("SELECT id,data FROM items WHERE kind='ct'").filter(r => r.id !== selfId).map(r => JSON.parse(r.data)).filter(x => x.c === cr.code && (x.ty || 'CT') === 'CT').map(x => +x.n || 0); o.n = String(Math.min(5, Math.max(0, ...used) + 1)); } } }
   if (kind === 'node') { need('t'); o.t = o.t.replace(/[\\/]+/g, '-'); o.ty = o.ty === 'link' ? 'link' : 'folder'; o.p = o.p || ''; if (o.p && !one("SELECT 1 x FROM items WHERE kind='node' AND id=?", o.p)) bad('Bad folder'); if (o.ty === 'link') { need('u'); o.u = normUrl(o.u); } o.sz = 0; }
   if (kind === 'res') o.p = o.p || '';
   if (kind === 'poll') o.cl = Math.min(168, Math.max(1, +o.cl || 24));
@@ -520,8 +522,11 @@ async function api(req, res, m, p) {
     if (kind === 'course' && all_("SELECT data FROM items WHERE kind='course'").some(r => JSON.parse(r.data).code === d.code)) throw { code: 409, error: 'Course already exists' };
     const id = put(kind, u.id, d); pushAlert(u.id, kind, d, id); return send(res, 200, { id });
   }
-  if ((m === 'PATCH' || m === 'DELETE') && (x = p.match(/^\/api\/items\/(\w+)$/))) {
+  if ((m === 'PATCH' || m === 'PUT' || m === 'DELETE') && (x = p.match(/^\/api\/items\/(\w+)$/))) {
     const u = auth(), row = one('SELECT * FROM items WHERE id=?', x[1]); if (!row) throw { code: 404, error: 'Not found' };
+    if (m === 'PUT') { admin(); if (!['event', 'ct', 'vac', 'routine'].includes(row.kind)) bad('Not editable'); const old = JSON.parse(row.data), o = clean(row.kind, { ...old, ...b }, row.id), nd = { ...old, ...o };
+      if (row.kind === 'ct') nd.done = old.done || 0; if (row.kind === 'event') nd.sh = old.sh || 1;
+      run('UPDATE items SET data=? WHERE id=?', JSON.stringify(nd), row.id); return send(res, 200, { ok: 1 }); }
     if (m === 'PATCH') { admin(); const d = JSON.parse(row.data), wasCancelled = !!d.x; if (row.kind === 'ct') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'event') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'notice' || row.kind === 'msg') d.pin = b.pin ? 1 : 0; else bad('Not editable'); run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); if (row.kind === 'ct' && wasCancelled !== !!d.x) pushAlert(u.id, 'ct', d, row.id + (d.x ? 'x' : 'r')); if (row.kind === 'event' && wasCancelled !== !!d.x) pushAlert(u.id, 'event', d, row.id + (d.x ? 'x' : 'r')); return send(res, 200, { ok: 1 }); }
     // legacy personal calendar events (created before the calendar became admin-only) can still be removed by their owner
     const legacy = row.kind === 'event' && row.owner === u.id && !JSON.parse(row.data).sh;
