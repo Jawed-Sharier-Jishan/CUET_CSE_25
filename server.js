@@ -244,7 +244,7 @@ async function upload(req, res) {
   const U = me(req); if (!U) throw { code: 401, error: 'Please log in' }; if (!isStaff(U)) throw { code: 403, error: 'Only the class admin can do this' };
   const q = new URL(req.url, 'http://x').searchParams, p = q.get('p') || '', n = (q.get('n') || 'file').replace(/[\\/]+/g, '-').slice(0, 120);
   if (p && !one("SELECT 1 x FROM items WHERE kind='node' AND id=?", p)) bad('Bad folder');
-  const ch = []; let sz = 0; for await (const c of req) { sz += c.length; if (sz > 25e6) { req.destroy(); throw { code: 413, error: 'Max file size is 25 MB' }; } ch.push(c); }
+  const ch = []; let sz = 0; for await (const c of req) { sz += c.length; if (sz > 10e6) { req.destroy(); throw { code: 413, error: 'Max file size is 10 MB' }; } ch.push(c); }
   const buffer = Buffer.concat(ch), id = rid(), data = { t: n, ty: 'file', p, sz };
   if (cloudinary) data.cloud = cloudAsset(await uploadCloudBuffer(buffer, { resource_type: 'raw', type: 'authenticated', public_id: 'cuet-cse25/resources/' + id + '_' + n.replace(/[^\w.\-]+/g, '_'), asset_folder: 'cuet-cse25/resources' }));
   const itemId = put('node', U.id, data);
