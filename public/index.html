@@ -1501,6 +1501,101 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 
 /* thin scrollbars that match */
 :root[data-theme="light"]{scrollbar-color:rgba(0,90,120,.4) transparent}
+
+/* =====================================================================
+   RESOURCES v2 - rows no longer overlap (columns are fixed, actions never
+   share a cell), and file names are click-to-open (in-page viewer)
+   ===================================================================== */
+.ex>.col{container-type:inline-size;min-width:0}
+.fh,.fn{grid-template-columns:minmax(0,1fr) 58px 104px 68px 212px}
+.fn>span{min-width:0}.fn>span:first-child{overflow-wrap:anywhere}
+.fn>.row{justify-content:flex-end;flex-wrap:nowrap;gap:6px}
+.fn .mini{white-space:nowrap;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-height:30px}
+.fn .mini.dl{width:34px;padding:0}
+.fn .pick.fo{width:auto;max-width:100%;display:inline-flex;align-items:center;gap:6px;padding:3px 0;text-align:left;cursor:pointer;overflow-wrap:anywhere}
+.fn .pick.fo:hover,.fn .pick.fo:focus-visible{color:var(--acc);text-decoration:underline}
+.fn .pick.fo .ic{flex:none}
+@container (max-width:560px){
+  .fh{display:none}
+  .fn{grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;padding:11px 8px;align-items:start}
+  .fn>span:first-child{grid-column:1;grid-row:1}
+  .fn>span:nth-child(2),.fn>span:nth-child(3),.fn>span:nth-child(4){grid-column:1;color:var(--mut);font-size:10px}
+  .fn>span:nth-child(2){grid-row:2}.fn>span:nth-child(3){grid-row:3}.fn>span:nth-child(4){grid-row:4}
+  .fn>.row{grid-column:2;grid-row:1 / span 4;align-self:center;flex-wrap:wrap;max-width:160px}
+  .fn .mini.dl{opacity:1}
+}
+/* in-page file viewer */
+#fv.rv .fvb{width:min(1100px,96vw);height:94vh;max-height:94vh}
+#fv.rv .fvh .mini{flex:none;text-decoration:none}
+#fv.rv .fvc{flex:1;min-height:0;display:block;overflow:auto;-webkit-overflow-scrolling:touch;background:#fff;color:#14232e;border-radius:6px}
+#fv.rv .fvc.media{display:grid;place-items:center;background:transparent}
+#fv.rv .fvc.media img,#fv.rv .fvc.media video{max-width:100%;max-height:100%;object-fit:contain}
+#fv.rv .fvc.pdf{background:#4a4f55;padding:8px 0}
+#fv.rv .fvc.pdf canvas{display:block;margin:0 auto 10px;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+#fv.rv .fvc.doc{padding:20px 24px;font:14px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif;overflow-wrap:anywhere}
+#fv.rv .fvc.doc img{max-width:100%;height:auto}
+#fv.rv .fvc.doc pre{margin:0;white-space:pre-wrap;word-break:break-word;font:12px/1.6 ui-monospace,Menlo,Consolas,monospace}
+#fv.rv .fvc.doc h4{margin:14px 0 6px;color:#00566a}
+#fv.rv .rvt{overflow-x:auto;margin-bottom:8px}
+#fv.rv .rvt table,#fv.rv .fvc.doc table{border-collapse:collapse;font-size:12px}
+#fv.rv .rvt td,#fv.rv .rvt th,#fv.rv .fvc.doc td,#fv.rv .fvc.doc th{border:1px solid #c7d6e0;padding:4px 8px;vertical-align:top}
+#fv.rv .rvm{margin:0;padding:48px 24px;text-align:center;color:#3a4f5e}
+@media(max-width:600px){#fv.rv{padding:6px}#fv.rv .fvb{width:100%;height:96vh;max-height:96vh}#fv.rv .fvc.doc{padding:14px 12px}}
+
+/* =====================================================================
+   LIGHT MODE v4 - the dark-mode visual effects, tuned for a bright page
+   (scanlines, vignette, glowing text, glowing hover / spotlight on cards,
+   glowing buttons and rails). Elements with cut corners (clip-path) clip
+   outer shadows, so those also get an inset glow that stays visible.
+   ===================================================================== */
+:root[data-theme="light"] body::before{display:block;background:linear-gradient(rgba(0,90,120,0) 50%,rgba(0,90,120,.03) 50%);background-size:100% 4px}
+:root[data-theme="light"] body::after{display:block;background:radial-gradient(circle at center,transparent 62%,rgba(0,90,120,.09) 100%)}
+:root[data-theme="light"] #sweep{opacity:.32}
+:root[data-theme="light"] .orb{opacity:.22}
+:root[data-theme="light"] .floor{opacity:.2}
+:root[data-theme="light"] #dashView::after{opacity:1}
+/* glowing text */
+:root[data-theme="light"] h2,
+:root[data-theme="light"] #dashView .dash-content h2{text-shadow:0 0 14px var(--acc-glow)}
+:root[data-theme="light"] .hero h1{text-shadow:0 0 22px var(--acc-glow)}
+:root[data-theme="light"] .typed,
+:root[data-theme="light"] .brand,
+:root[data-theme="light"] .stats h3,
+:root[data-theme="light"] .dev h3,
+:root[data-theme="light"] .dev .dp{text-shadow:0 0 10px var(--acc-glow)}
+:root[data-theme="light"] .links a:hover,
+:root[data-theme="light"] .links a.active,
+:root[data-theme="light"] .dash-link:hover,
+:root[data-theme="light"] .dash-link.active,
+:root[data-theme="light"] footer a:hover{text-shadow:0 0 8px var(--acc-glow)}
+:root[data-theme="light"] .mrow.me .class-title{text-shadow:0 0 10px var(--acc-glow)}
+/* glowing rails */
+:root[data-theme="light"] section::before{box-shadow:0 0 10px var(--acc)}
+:root[data-theme="light"] .scroll-progress{box-shadow:0 0 10px var(--acc)}
+:root[data-theme="light"] .links a::after{box-shadow:0 0 8px var(--acc)}
+/* cards: lift + glow + cursor spotlight */
+:root[data-theme="light"] a.card:hover,
+:root[data-theme="light"] .sc:hover,
+:root[data-theme="light"] .dev:hover{box-shadow:0 0 25px var(--acc-glow),inset 0 0 18px rgba(0,117,140,.09)}
+:root[data-theme="light"] .card:hover,
+:root[data-theme="light"] a.card:hover{background-image:radial-gradient(240px circle at var(--mx,50%) var(--my,50%),rgba(0,117,140,.16),transparent 70%)}
+:root[data-theme="light"] #dashView .schedule-card:hover{border-color:color-mix(in srgb,var(--acc) 65%,var(--line));box-shadow:0 0 18px rgba(0,117,140,.18),inset 0 0 14px rgba(0,117,140,.06)}
+:root[data-theme="light"] .cd:hover,
+:root[data-theme="light"] .cd.sel,
+:root[data-theme="light"] .pv:hover{box-shadow:0 0 10px var(--acc-glow),inset 0 0 10px rgba(0,117,140,.06)}
+/* buttons */
+:root[data-theme="light"] .btn:hover{box-shadow:0 0 20px var(--acc-glow);transform:translateY(-2px)}
+:root[data-theme="light"] .btn.p{box-shadow:0 0 15px var(--acc-glow)}
+:root[data-theme="light"] .btn.p:hover{box-shadow:0 0 22px var(--acc2-glow)}
+:root[data-theme="light"] .ib:hover{box-shadow:0 0 14px var(--acc-glow)}
+:root[data-theme="light"] .mini:hover{box-shadow:0 0 10px var(--acc-glow)}
+:root[data-theme="light"] .mini.rm:hover,
+:root[data-theme="light"] .mini.rm:focus-visible{box-shadow:0 0 12px var(--acc2-glow)}
+/* "you" row in Classmates: highlighted + gently pulsing (was flattened by the white card background) */
+:root[data-theme="light"] .mrow.me{border-color:var(--acc);background:linear-gradient(100deg,rgba(0,117,140,.15),#fff 75%);box-shadow:inset 3px 0 0 var(--acc),0 0 16px rgba(0,117,140,.30);animation:mepulse 2.8s ease-in-out infinite}
+:root[data-theme="light"] .mrow:hover .mav{box-shadow:0 0 10px var(--acc-glow)}
+:root[data-theme="light"] .mrow.me .mav{box-shadow:0 0 14px var(--acc-glow)}
+@media(prefers-reduced-motion:reduce){:root[data-theme="light"] .mrow.me{animation:none}}
 </style>
 </head>
 <body>
