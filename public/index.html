@@ -1602,8 +1602,11 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
    has real thickness (stacked slabs) and its text/title bar sit on
    separate depth layers. Works in dark and light mode.
    ===================================================================== */
-.term3d{position:relative;perspective:1000px;margin-top:18px;animation:t3float 6s ease-in-out infinite}
-.t3{position:relative;transform-style:preserve-3d;transform:rotateX(var(--t3x,9deg)) rotateY(var(--t3y,-16deg));transition:transform .18s ease-out}
+.term3d{position:relative;perspective:1000px;margin-top:18px}
+.t3{position:relative;transform-style:preserve-3d;transform:rotateX(var(--t3x,0deg)) rotateY(var(--t3y,0deg)) translateZ(var(--t3z,0px));transition:transform .18s ease-out}
+.term3d:hover .term{border-color:var(--acc);box-shadow:0 0 25px var(--acc-glow),inset 0 0 15px color-mix(in srgb,var(--acc) 12%,transparent)}
+.term3d .term{background-image:radial-gradient(240px circle at var(--mx,50%) var(--my,50%),transparent,transparent)}
+.term3d:hover .term{background-image:radial-gradient(240px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--acc) 16%,transparent),transparent 70%)}
 .term3d .term{clip-path:none;border-radius:8px;transform-style:preserve-3d;overflow:visible;box-shadow:0 0 0 1px color-mix(in srgb,var(--acc) 40%,transparent),inset 0 0 18px color-mix(in srgb,var(--acc) 12%,transparent)}
 .term3d .term .top{transform:translateZ(30px);border-radius:8px 8px 0 0;background:color-mix(in srgb,var(--acc) 14%,#050d18)}
 .term3d .term pre{transform:translateZ(18px)}
@@ -1616,8 +1619,8 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 :root[data-theme="light"] .t3b{border-color:rgba(0,117,140,.7);background:linear-gradient(135deg,#1c6f82,#0b1626)}
 :root[data-theme="light"] .t3b.b3{background:#0b1626;box-shadow:0 34px 44px -12px rgba(8,50,80,.5),0 0 40px rgba(0,117,140,.3)}
 :root[data-theme="light"] .term3d .term .top{background:#10243a}
-@media(max-width:700px){.t3{--t3x:6deg;--t3y:-9deg}.term3d .term .top{transform:translateZ(20px)}.term3d .term pre{transform:translateZ(12px)}.t3b.b3{transform:translateZ(-18px)}}
-@media(prefers-reduced-motion:reduce){.term3d{animation:none}.t3{transition:none}}
+@media(max-width:700px){.term3d .term .top{transform:translateZ(20px)}.term3d .term pre{transform:translateZ(12px)}.t3b.b3{transform:translateZ(-18px)}}
+@media(prefers-reduced-motion:reduce){.t3{transition:none}}
 </style>
 </head>
 <body>
@@ -2642,11 +2645,12 @@ fetch('/api/projects').then(r=>r.json()).then(p=>{if(p.length){window.PROJECTS=p
 })();
 </script>
 <script>
-/* 3D code window: follow the pointer (mouse / touch / pen) */
-(()=>{const w=document.getElementById('t3d');if(!w||matchMedia('(prefers-reduced-motion:reduce)').matches)return;const t=w.firstElementChild,def=()=>{t.style.removeProperty('--t3x');t.style.removeProperty('--t3y')};
-addEventListener('pointermove',e=>{const r=w.getBoundingClientRect();if(r.bottom<0||r.top>innerHeight)return;const x=(e.clientX-(r.left+r.width/2))/innerWidth,y=(e.clientY-(r.top+r.height/2))/innerHeight;
-t.style.setProperty('--t3y',Math.max(-28,Math.min(28,x*46))+'deg');t.style.setProperty('--t3x',Math.max(-20,Math.min(24,-y*34))+'deg')},{passive:true});
-document.addEventListener('pointerleave',def);addEventListener('blur',def)})();
+/* 3D code window: same hover tilt + spotlight as the other cards (flat at rest) */
+(()=>{const w=document.getElementById('t3d');if(!w||matchMedia('(prefers-reduced-motion:reduce)').matches)return;const t=w.firstElementChild,rs=()=>{['--t3x','--t3y','--t3z'].forEach(k=>t.style.removeProperty(k))};
+w.addEventListener('pointermove',e=>{if(e.pointerType==='touch')return;const r=w.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
+t.style.setProperty('--t3y',x*14+'deg');t.style.setProperty('--t3x',-y*14+'deg');t.style.setProperty('--t3z','10px');
+w.style.setProperty('--mx',e.clientX-r.left+'px');w.style.setProperty('--my',e.clientY-r.top+'px')});
+w.addEventListener('pointerleave',rs);w.addEventListener('pointercancel',rs)})();
 </script>
 <script src="/x.js"></script>
 <script src="/app.js"></script>
