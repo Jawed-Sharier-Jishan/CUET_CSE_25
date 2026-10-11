@@ -507,7 +507,7 @@ async function api(req, res, m, p) {
     } else { pr.photo = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(photo) && photo.length < 2.5e5 ? photo : ''; delete pr.photoAsset; }
   }
     run('UPDATE users SET profile=? WHERE id=?', JSON.stringify(pr), u.id); return send(res, 200, { ok: 1 }); }
-  if (m === 'POST' && p === '/api/password') { const u = auth(), pw = String(b.n || ''); if (!verify(String(b.o || ''), u.pw)) bad('Current password is wrong'); if (pw.length < 8) bad('New password needs 8+ characters'); run('UPDATE users SET pw=? WHERE id=?', hash(pw), u.id); return send(res, 200, { ok: 1 }); }
+  if (m === 'POST' && p === '/api/password') { const u = auth(), pw = String(b.n || ''); if (!verify(String(b.o || ''), u.pw)) bad('Current password is wrong'); if (pw.length < 8) bad('New password needs 8+ characters'); run('UPDATE users SET pw=? WHERE id=?', hash(pw), u.id); run('DELETE FROM sessions WHERE uid=? AND token<>?', u.id, cookieOf(req, 'sid') || ''); return send(res, 200, { ok: 1 }); }
   if (m === 'POST' && p === '/api/resetpw') { // admin resets a student's password to a one-time temporary one; admins reset students only, the developer resets anyone but themselves
     const u = auth(); if (u.id !== CID && !flags(u.role).adm) throw { code: 403, error: 'Only an admin can reset passwords' };
     const t = one('SELECT id,role FROM users WHERE id=?', String(b.id || '')); if (!t) bad('Unknown user');
