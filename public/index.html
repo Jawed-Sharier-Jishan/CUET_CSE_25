@@ -1596,6 +1596,28 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 :root[data-theme="light"] .mrow:hover .mav{box-shadow:0 0 10px var(--acc-glow)}
 :root[data-theme="light"] .mrow.me .mav{box-shadow:0 0 14px var(--acc-glow)}
 @media(prefers-reduced-motion:reduce){:root[data-theme="light"] .mrow.me{animation:none}}
+
+/* =====================================================================
+   3D code window (home hero): tilts toward the pointer, floats gently,
+   has real thickness (stacked slabs) and its text/title bar sit on
+   separate depth layers. Works in dark and light mode.
+   ===================================================================== */
+.term3d{position:relative;perspective:1000px;margin-top:18px;animation:t3float 6s ease-in-out infinite}
+.t3{position:relative;transform-style:preserve-3d;transform:rotateX(var(--t3x,9deg)) rotateY(var(--t3y,-16deg));transition:transform .18s ease-out}
+.term3d .term{clip-path:none;border-radius:8px;transform-style:preserve-3d;overflow:visible;box-shadow:0 0 0 1px color-mix(in srgb,var(--acc) 40%,transparent),inset 0 0 18px color-mix(in srgb,var(--acc) 12%,transparent)}
+.term3d .term .top{transform:translateZ(30px);border-radius:8px 8px 0 0;background:color-mix(in srgb,var(--acc) 14%,#050d18)}
+.term3d .term pre{transform:translateZ(18px)}
+.term3d .term::after{transform:translateZ(38px)}
+.term3d .term .g{text-shadow:0 0 8px var(--acc)}
+.t3b{position:absolute;inset:0;border-radius:8px;pointer-events:none;border:1px solid color-mix(in srgb,var(--acc) 70%,transparent);background:linear-gradient(135deg,color-mix(in srgb,var(--acc) 38%,#02060c),#02060c)}
+.t3b.b1{transform:translateZ(-8px)}.t3b.b2{transform:translateZ(-16px)}
+.t3b.b3{transform:translateZ(-26px);background:#02060c;box-shadow:0 34px 50px -10px rgba(0,0,0,.65),0 0 46px var(--acc-glow)}
+@keyframes t3float{50%{translate:0 -9px}}
+:root[data-theme="light"] .t3b{border-color:rgba(0,117,140,.7);background:linear-gradient(135deg,#1c6f82,#0b1626)}
+:root[data-theme="light"] .t3b.b3{background:#0b1626;box-shadow:0 34px 44px -12px rgba(8,50,80,.5),0 0 40px rgba(0,117,140,.3)}
+:root[data-theme="light"] .term3d .term .top{background:#10243a}
+@media(max-width:700px){.t3{--t3x:6deg;--t3y:-9deg}.term3d .term .top{transform:translateZ(20px)}.term3d .term pre{transform:translateZ(12px)}.t3b.b3{transform:translateZ(-18px)}}
+@media(prefers-reduced-motion:reduce){.term3d{animation:none}.t3{transition:none}}
 </style>
 </head>
 <body>
@@ -1646,7 +1668,8 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
   </div>
   <div class="side reveal">
   <div class="scene" id="scene" title="Drag to manipulate holographic core"><div class="cube" id="cube"><div>CSE</div><div>'25</div><div>CUET</div><div>&lt;/&gt;</div><div>01</div><div>10</div></div></div>
-  <div class="term" aria-hidden="true">
+  <div class="term3d" id="t3d" aria-hidden="true"><div class="t3"><i class="t3b b1"></i><i class="t3b b2"></i><i class="t3b b3"></i>
+  <div class="term">
    <div class="top"><b></b><b></b><b></b></div>
 <pre><span class="g">$</span> ./init --batch=2025
 <span class="d">&gt; 8 students, 4 projects loaded</span>
@@ -1655,7 +1678,7 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 <span class="d">// one batch.</span>
 <span class="g">$</span> git log --oneline -1
 <span class="g">a1b2c3d</span> system.init(world_hello);</pre>
-  </div>
+  </div></div></div>
   </div>
  </div>
 </header>
@@ -2617,6 +2640,13 @@ fetch('/api/projects').then(r=>r.json()).then(p=>{if(p.length){window.PROJECTS=p
  draw(DEF);
  fetch("/api/developer").then(function(r){return r.ok?r.json():null}).then(function(z){if(z)draw(Object.assign({},DEF,z,{email:z.email||DEF.email}))}).catch(function(){});
 })();
+</script>
+<script>
+/* 3D code window: follow the pointer (mouse / touch / pen) */
+(()=>{const w=document.getElementById('t3d');if(!w||matchMedia('(prefers-reduced-motion:reduce)').matches)return;const t=w.firstElementChild,def=()=>{t.style.removeProperty('--t3x');t.style.removeProperty('--t3y')};
+addEventListener('pointermove',e=>{const r=w.getBoundingClientRect();if(r.bottom<0||r.top>innerHeight)return;const x=(e.clientX-(r.left+r.width/2))/innerWidth,y=(e.clientY-(r.top+r.height/2))/innerHeight;
+t.style.setProperty('--t3y',Math.max(-28,Math.min(28,x*46))+'deg');t.style.setProperty('--t3x',Math.max(-20,Math.min(24,-y*34))+'deg')},{passive:true});
+document.addEventListener('pointerleave',def);addEventListener('blur',def)})();
 </script>
 <script src="/x.js"></script>
 <script src="/app.js"></script>
