@@ -211,7 +211,7 @@ async function chatUpload(req, res) {
   const buf = Buffer.concat(ch); if (!buf.length) bad('Empty file');
   let ty = String(q.get('ty') || '').toLowerCase().slice(0, 80); if (!INLINE_OK.test(ty)) ty = 'application/octet-stream';
   const file = { n, sz: buf.length, ty };
-  if (cloudinary) file.cloud = cloudAsset(await uploadCloudBuffer(buf, { resource_type: 'raw', type: 'authenticated', public_id: 'cuet-cse25/chat/' + rid() + '_' + n.replace(/[^\w.\-]+/g, '_') }));
+  if (cloudinary) file.cloud = cloudAsset(await uploadCloudBuffer(buf, { resource_type: 'raw', type: 'authenticated', public_id: 'cuet-cse25/chat/' + rid() + '_' + n.replace(/[^\w.\-]+/g, '_'), asset_folder: 'cuet-cse25/chat' }));
   const mid = put('msg', U.id, { r: room, t, file, ...(once ? { once: 1, seen: {} } : {}) });
   if (!cloudinary) fs.writeFileSync(path.join(UP, 'm_' + mid), buf);
   pushAlert(U.id, 'msg', { r: room, t, img: false, fn: once ? '' : n, once }, mid); return send(res, 200, { ok: 1 });
@@ -246,7 +246,7 @@ async function upload(req, res) {
   if (p && !one("SELECT 1 x FROM items WHERE kind='node' AND id=?", p)) bad('Bad folder');
   const ch = []; let sz = 0; for await (const c of req) { sz += c.length; if (sz > 25e6) { req.destroy(); throw { code: 413, error: 'Max file size is 25 MB' }; } ch.push(c); }
   const buffer = Buffer.concat(ch), id = rid(), data = { t: n, ty: 'file', p, sz };
-  if (cloudinary) data.cloud = cloudAsset(await uploadCloudBuffer(buffer, { resource_type: 'raw', type: 'authenticated', public_id: 'cuet-cse25/resources/' + id + '_' + n }));
+  if (cloudinary) data.cloud = cloudAsset(await uploadCloudBuffer(buffer, { resource_type: 'raw', type: 'authenticated', public_id: 'cuet-cse25/resources/' + id + '_' + n.replace(/[^\w.\-]+/g, '_'), asset_folder: 'cuet-cse25/resources' }));
   const itemId = put('node', U.id, data);
   if (!cloudinary) fs.writeFileSync(path.join(UP, itemId), buffer);
   pushAlert(U.id, 'node', data, itemId); return send(res, 200, { id: itemId });
@@ -486,6 +486,16 @@ async function api(req, res, m, p) {
     if (!fs.existsSync(path.join(UP, g.id))) throw { code: 404, error: 'Not found' };
     const thumb = x[2] && fs.existsSync(path.join(UP, g.id + '.thumb.jpg')), file = thumb ? path.join(UP, g.id + '.thumb.jpg') : path.join(UP, g.id);
     res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': thumb ? 'public, max-age=604800, immutable' : x[2] ? 'no-store' : 'public, max-age=86400' }); return fs.createReadStream(file).pipe(res); }
+  if (m === 'GET' && p === '/api/organize-cloud') { admin(); // one-off tidy-up: puts every existing Cloudinary asset into its cuet-cse25/<section> folder (safe to re-run; IDs and links do not change)
+    if (!cloudinary) bad('Cloudinary is not configured');
+    const jobs = [], add = (asset, folder) => { if (asset?.publicId) jobs.push({ asset, folder: 'cuet-cse25/' + folder }); };
+    for (const r of all_("SELECT kind,data FROM items WHERE kind IN ('node','photo','msg')")) { let d; try { d = JSON.parse(r.data); } catch { continue; }
+      if (r.kind === 'node') add(d.cloud, 'resources'); else if (r.kind === 'photo') add(d.cloud, 'gallery'); else { add(d.imgAsset, 'chat'); add(d.file?.cloud, 'chat'); } }
+    for (const r of all_('SELECT profile FROM users')) { try { add(JSON.parse(r.profile || '{}').photoAsset, 'profiles'); } catch {} }
+    const out = { total: jobs.length, moved: 0, failed: 0, errors: [] };
+    for (const j of jobs) { try { await cloudinary.api.update(j.asset.publicId, { resource_type: j.asset.resourceType || 'image', type: j.asset.deliveryType || 'upload', asset_folder: j.folder }); out.moved++; }
+      catch (e) { out.failed++; if (out.errors.length < 10) out.errors.push(j.asset.publicId + ': ' + (e.error?.message || e.message)); } }
+    return send(res, 200, out); }
   if (m === 'POST' && p === '/api/official') { admin(); loadOfficial(); return send(res, 200, { ok: 1 }); }
   if (m === 'PUT' && p === '/api/profile2') { const u = auth(), pr = JSON.parse(u.profile || '{}'), L = { dob: 10, fb: 200, ig: 200, li: 200, ot: 200, dist: 40, town: 80, school: 80, college: 80 };
     for (const k in L) if (k in b) pr[k] = String(b[k] || '').trim().slice(0, L[k]);
@@ -585,7 +595,7 @@ async function handleRequest(req, res) {
       res.writeHead(200, { 'Content-Type': MT['.html'] }); return res.end(html);
     }
     res.writeHead(200, { 'Content-Type': MT[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res);
-  } catch (e) { if (!e.code) console.error(e); res.headersSent ? res.end() : send(res, e.code || 500, { error: e.error || 'Server error' }); }
+  } catch (e) { if (!e.code) console.error(e); res.headersSent ? res.end() : send(res, e.code || 500, { error: e.error || (e.http_code && e.message ? 'Cloudinary: ' + e.message : 'Server error') }); }
 }
 
 function dumpPersistentState() {
