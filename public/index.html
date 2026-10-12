@@ -1646,8 +1646,10 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 :root[data-theme="light"] #fv #fvx:hover,:root[data-theme="light"] #fv #fvx:focus-visible{background:#d62839;border-color:#d62839;color:#fff;box-shadow:none}
 /* phones: Cancel stays pinned top-right so it is always reachable */
 @media(max-width:820px){
-#fv .fvh{padding-right:96px}
-#fv #fvx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;z-index:100000;min-width:44px;min-height:40px;padding:6px 14px;background:rgba(3,7,18,.92);color:var(--acc);border:1px solid var(--acc);border-radius:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+#fv .fvh{padding-right:52px}
+#fv .fvh a.mini{min-height:30px;min-width:56px;padding:4px 12px;font-size:10px;letter-spacing:.1em;background:rgba(3,7,18,.92);color:var(--acc);border:1px solid var(--acc);border-radius:0;opacity:1;visibility:visible}
+:root[data-theme="light"] #fv .fvh a.mini{background:#fff;color:var(--acc)}
+#fv #fvx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;z-index:100000;min-width:34px;width:34px;min-height:30px;height:30px;padding:0;background:rgba(3,7,18,.92);color:var(--acc);border:1px solid var(--acc);border-radius:0;font-size:15px;letter-spacing:0;text-transform:uppercase}
 :root[data-theme="light"] #fv #fvx{background:#fff;color:var(--acc)}
 #fv #fvx:hover,#fv #fvx:focus-visible{background:#e5333f;border-color:#e5333f;color:#fff}
 :root[data-theme="light"] #fv #fvx:hover,:root[data-theme="light"] #fv #fvx:focus-visible{background:#d62839;border-color:#d62839;color:#fff}
