@@ -1639,8 +1639,9 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 #fv .fvb{max-height:calc(100dvh - 24px)}
 #fv.rv .fvb{height:calc(100dvh - 24px);max-height:calc(100dvh - 24px)}
 #fv .fvh span{min-width:0}
-/* Save + Cancel: same size, same colour, side by side; Cancel turns red on hover */
-#fv .fvh .mini{flex:none;box-sizing:border-box;min-height:32px;min-width:64px;padding:6px 14px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;letter-spacing:.1em;text-transform:uppercase;text-decoration:none}
+/* small Save + cross close, side by side; the cross turns red on hover */
+#fv .fvh .mini{flex:none;box-sizing:border-box;min-height:24px;min-width:0;padding:3px 9px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;letter-spacing:.08em;text-transform:uppercase;text-decoration:none}
+#fv #fvx{width:24px;padding:0;font-size:12px;letter-spacing:0;line-height:1}
 #fv #fvx:hover,#fv #fvx:focus-visible{background:#e5333f;border-color:#e5333f;color:#fff;box-shadow:0 0 12px rgba(229,51,63,.55)}
 :root[data-theme="light"] #fv #fvx:hover,:root[data-theme="light"] #fv #fvx:focus-visible{background:#d62839;border-color:#d62839;color:#fff;box-shadow:none}
 /* phones: Cancel stays pinned top-right so it is always reachable */
