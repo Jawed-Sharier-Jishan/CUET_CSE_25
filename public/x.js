@@ -180,10 +180,10 @@ const RMIME={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/
  loadJs=u=>rjs[u]||(rjs[u]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>{delete rjs[u];no(Error('tool'))};document.head.appendChild(s)}));
 async function viewRes(n){
  document.getElementById('fv')?.remove();
- const o=document.createElement('div'),dl='/api/dl/'+encodeURIComponent(n.id),urls=[];let dead=false;o.id='fv';o.className='rv';
- o.innerHTML='<div class="fvb"><div class="fvh"><span>'+esc(n.t)+'</span><a class="mini" href="'+dl+'" download="'+esc(n.t)+'">Save</a><button type="button" class="mini" id="fvx">Cancel</button></div><div class="fvc rvc"><p class="rvm">Loading…</p></div></div>';
+ const nat=(matchMedia('(pointer:coarse)').matches||innerWidth<=820)?' data-native="1"':'',o=document.createElement('div'),dl='/api/dl/'+encodeURIComponent(n.id),urls=[];let dead=false;o.id='fv';o.className='rv';
+ o.innerHTML='<div class="fvb"><div class="fvh"><span>'+esc(n.t)+'</span><a class="mini" href="'+dl+'" download="'+esc(n.t)+'"'+nat+'>Save</a><button type="button" class="mini" id="fvx">Cancel</button></div><div class="fvc rvc"><p class="rvm">Loading…</p></div></div>';
  const body=o.querySelector('.rvc'),kd=e=>{if(e.key==='Escape')close()},close=()=>{dead=true;o.remove();urls.forEach(u=>URL.revokeObjectURL(u));document.removeEventListener('keydown',kd)},
-  msg=(t,k,withDl)=>{body.className='fvc rvc'+(k?' '+k:'');body.innerHTML='<p class="rvm">'+esc(t)+(withDl?'<br><br><a class="mini" href="'+dl+'" data-n="'+esc(n.t)+'" download="'+esc(n.t)+'">Download file</a>':'')+'</p>'};
+  msg=(t,k,withDl)=>{body.className='fvc rvc'+(k?' '+k:'');body.innerHTML='<p class="rvm">'+esc(t)+(withDl?'<br><br><a class="mini" href="'+dl+'" data-n="'+esc(n.t)+'" download="'+esc(n.t)+'"'+nat+'>Download file</a>':'')+'</p>'};
  o.addEventListener('click',e=>{if(e.target===o||e.target.id==='fvx')close()});document.addEventListener('keydown',kd);document.body.appendChild(o);
  try{
   let r;try{r=await fetch(dl+'?view=1',{credentials:'same-origin'});if(!r.ok)throw 0}catch(e){r=await fetch(dl,{credentials:'same-origin'});if(!r.ok)throw 0}
@@ -448,7 +448,7 @@ if(d.db)d.render();
 })();
 
 /* DOWNLOADS: every /api/dl/ link saves through a blob with the real file name, so phones never save a ".bin" or a renamed file */
-document.addEventListener('click',async e=>{const a=e.target.closest&&e.target.closest('a[href^="/api/dl/"]');if(!a||a.dataset.busy||e.defaultPrevented||e.button>0||e.ctrlKey||e.metaKey||e.shiftKey)return;
+document.addEventListener('click',async e=>{const a=e.target.closest&&e.target.closest('a[href^="/api/dl/"]');if(!a||a.dataset.native||a.dataset.busy||e.defaultPrevented||e.button>0||e.ctrlKey||e.metaKey||e.shiftKey)return;
  e.preventDefault();a.dataset.busy='1';const href=a.getAttribute('href');
  try{const r=await fetch(href,{credentials:'same-origin'});if(!r.ok)throw 0;const cd=r.headers.get('Content-Disposition')||'',m=/filename\*=UTF-8''([^;]+)/i.exec(cd);
   let name=a.dataset.n||a.getAttribute('download')||'';if(!name&&m)try{name=decodeURIComponent(m[1])}catch{name=m[1]}name=name||'file';
