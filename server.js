@@ -186,6 +186,8 @@ async function zip(es) { const out = [], cd = []; let off = 0;
     out.push(h, nm, d); cd.push(g, nm); off += 30 + nm.length + d.length; }
   const cb = Buffer.concat(cd), eo = Buffer.alloc(22); eo.writeUInt32LE(0x06054b50, 0); eo.writeUInt16LE(es.length, 8); eo.writeUInt16LE(es.length, 10); eo.writeUInt32LE(cb.length, 12); eo.writeUInt32LE(off, 16);
   return Buffer.concat([...out, cb, eo]); }
+const DL_MIME = { '.pdf': 'application/pdf', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8', '.csv': 'text/csv', '.json': 'application/json', '.zip': 'application/zip', '.mp4': 'video/mp4', '.mp3': 'audio/mpeg', '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', '.ppt': 'application/vnd.ms-powerpoint', '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation' };
+const dispo = name => 'attachment; filename="' + String(name).replace(/[^\x20-\x7e]|["\\]/g, '_') + "\"; filename*=UTF-8''" + encodeURIComponent(name).replace(/['()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 const ROOMS = ['U', 'A', 'B', 'A1', 'A2', 'B1', 'B2'];
 // Admins can read and post in every room; students only in the batch room and their own section / group.
 const roomOk = (r, u) => { if (isStaff(u)) return ROOMS.includes(r); const pl = place(u.id); return r === 'U' || (r !== '' && (r === pl.sec || r === pl.g)); };
@@ -535,11 +537,11 @@ async function api(req, res, m, p) {
     if (n.ty === 'file' && new URL(req.url, 'http://x').searchParams.get('view') === '1') {   // in-page viewer: send the bytes (never as a download); the browser decides the type from the file name
       let buf; if (n.cloud) { const r = await fetch(cloudPrivateUrl(n.cloud, false)); if (!r.ok) throw { code: 502, error: 'Could not load the file' }; buf = Buffer.from(await r.arrayBuffer()); } else buf = fs.readFileSync(path.join(UP, n.id));
       res.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Length': buf.length, 'Content-Disposition': 'inline', 'Cache-Control': 'private, no-store' }); return res.end(buf); }
-    if (n.ty === 'file') { res.setHeader('Content-Disposition', "attachment; filename*=UTF-8''" + encodeURIComponent(n.t));
-      if (n.cloud) { res.writeHead(302, { Location: cloudPrivateUrl(n.cloud, true), 'Cache-Control': 'private, no-store' }); return res.end(); }
-      res.writeHead(200, { 'Content-Type': 'application/octet-stream' }); return fs.createReadStream(path.join(UP, n.id)).pipe(res); }
+    if (n.ty === 'file') {   // always stream through this server so the file keeps its real name and type (a redirect to Cloudinary loses both -> ".bin")
+      let buf; if (n.cloud) { const r = await fetch(cloudPrivateUrl(n.cloud, false)); if (!r.ok) throw { code: 502, error: 'Could not load the file' }; buf = Buffer.from(await r.arrayBuffer()); } else buf = fs.readFileSync(path.join(UP, n.id));
+      res.writeHead(200, { 'Content-Type': DL_MIME[path.extname(n.t).toLowerCase()] || 'application/octet-stream', 'Content-Length': buf.length, 'Content-Disposition': dispo(n.t), 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'private, no-store' }); return res.end(buf); }
     const es = [{ name: n.t + '/' }], walk = (id, pre) => ns.filter(y => y.p === id).forEach(y => { if (y.ty === 'folder') { es.push({ name: pre + y.t + '/' }); walk(y.id, pre + y.t + '/'); } else if (y.ty === 'file') es.push({ name: pre + y.t, id: y.id }); }); walk(n.id, n.t + '/');
-    res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': "attachment; filename*=UTF-8''" + encodeURIComponent(n.t) + '.zip' }); return res.end(await zip(es)); }
+    res.writeHead(200, { 'Content-Type': 'application/zip', 'Content-Disposition': dispo(n.t + '.zip') }); return res.end(await zip(es)); }
   if (m === 'GET' && p === '/api/directory') { auth(); return send(res, 200, all_('SELECT id,name,profile FROM users ORDER BY id').map(y => { const q = JSON.parse(y.profile || '{}'); return { id: y.id, n: y.name, ...place(y.id), fb: q.fb || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '' }; })); }
   if (m === 'POST' && (x = p.match(/^\/api\/(\w+)$/)) && FIELDS[x[1]]) {
     const kind = x[1], u = auth(); if (ADMIN.has(kind)) admin(); const d = clean(kind, b);
