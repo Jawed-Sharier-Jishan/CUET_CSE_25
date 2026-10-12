@@ -179,12 +179,11 @@ const RMIME={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/
  RTXT=/^(txt|md|json|xml|html?|css|js|ts|c|h|cpp|hpp|java|py|sql|log|ini|ya?ml|tex|sh|asm|m|v|vhd|vhdl)$/,RCDN='https://cdnjs.cloudflare.com/ajax/libs/',rjs={},
  loadJs=u=>rjs[u]||(rjs[u]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>{delete rjs[u];no(Error('tool'))};document.head.appendChild(s)}));
 async function viewRes(n){
- if(matchMedia('(pointer:coarse)').matches||innerWidth<=820){const w=window.open('/api/dl/'+encodeURIComponent(n.id)+'?open=1','_blank');if(w)return;location.href='/api/dl/'+encodeURIComponent(n.id)+'?open=1';return}
  document.getElementById('fv')?.remove();
  const o=document.createElement('div'),dl='/api/dl/'+encodeURIComponent(n.id),urls=[];let dead=false;o.id='fv';o.className='rv';
- o.innerHTML='<div class="fvb"><div class="fvh"><span>'+esc(n.t)+'</span><a class="mini" href="'+dl+'" download="'+esc(n.t)+'">Save</a><button type="button" class="mini" id="fvx">Close</button></div><div class="fvc rvc"><p class="rvm">Loading…</p></div></div>';
+ o.innerHTML='<div class="fvb"><div class="fvh"><span>'+esc(n.t)+'</span><a class="mini" href="'+dl+'" download="'+esc(n.t)+'">Save</a><button type="button" class="mini" id="fvx">Cancel</button></div><div class="fvc rvc"><p class="rvm">Loading…</p></div></div>';
  const body=o.querySelector('.rvc'),kd=e=>{if(e.key==='Escape')close()},close=()=>{dead=true;o.remove();urls.forEach(u=>URL.revokeObjectURL(u));document.removeEventListener('keydown',kd)},
-  msg=(t,k)=>{body.className='fvc rvc'+(k?' '+k:'');body.innerHTML='<p class="rvm">'+esc(t)+'</p>'};
+  msg=(t,k,withDl)=>{body.className='fvc rvc'+(k?' '+k:'');body.innerHTML='<p class="rvm">'+esc(t)+(withDl?'<br><br><a class="mini" href="'+dl+'" data-n="'+esc(n.t)+'" download="'+esc(n.t)+'">Download file</a>':'')+'</p>'};
  o.addEventListener('click',e=>{if(e.target===o||e.target.id==='fvx')close()});document.addEventListener('keydown',kd);document.body.appendChild(o);
  try{
   let r;try{r=await fetch(dl+'?view=1',{credentials:'same-origin'});if(!r.ok)throw 0}catch(e){r=await fetch(dl,{credentials:'same-origin'});if(!r.ok)throw 0}
@@ -208,8 +207,8 @@ async function viewRes(n){
    body.className='fvc rvc doc';body.innerHTML=wb.SheetNames.map(sn=>{const ws=wb.Sheets[sn],rg=X0.utils.decode_range(ws['!ref']||'A1');let cut='';if(rg.e.r>499){rg.e.r=499;ws['!ref']=X0.utils.encode_range(rg);cut='<small>Showing the first 500 rows.</small>'}
     return(wb.SheetNames.length>1?'<h4>'+esc(sn)+'</h4>':'')+'<div class="rvt">'+X0.utils.sheet_to_html(ws,{header:'',footer:''})+'</div>'+cut}).join('')}
   else if(RTXT.test(x)){body.className='fvc rvc doc';const pre=document.createElement('pre');pre.textContent=new TextDecoder().decode(buf.slice(0,1048576))+(buf.byteLength>1048576?'\n\n… (preview shows the first 1 MB)':'');body.innerHTML='';body.appendChild(pre)}
-  else msg('This file type ('+(x?'.'+x:'unknown')+') can\u2019t be previewed in the browser. Use Save above to download it.')
- }catch(e){if(!dead)msg('Could not open this file. Check your connection and try again.')}
+  else msg('This file type ('+(x?'.'+x:'unknown')+') can\u2019t be shown here. You can download it instead.','',1)
+ }catch(e){if(!dead)msg('This file can\u2019t be shown here. You can download it instead.','',1)}
 }
 A.x_view=id=>{const n=nodeOf(id);if(n&&n.ty==='file')viewRes(n)};
 
@@ -263,7 +262,7 @@ const fcard=x=>{if(!x.file)return'';const f=x.file,dev=!!Q().isCreator,once=!!x.
  return'<div class="fcard'+(once?' once':'')+'"><span class="fic" aria-hidden="true">'+(once?IC('lock'):IC('clip'))+'</span><div class="ftx"><b>'+(once&&!dev?'View-once '+fkind(f.ty):esc(f.n))+'</b><small>'+lab+'</small></div>'+(btn?'<button type="button" class="mini" data-a="openF" data-id="'+x.id+'" data-once="'+(once?1:0)+'">'+btn+'</button>':'')+'</div>'};
 const showF=(url,ty,name,once)=>{const o=document.createElement('div');o.id='fv';const k=ty.split('/')[0];
  const el=k==='image'?'<img alt="" draggable="false" src="'+url+'">':k==='video'?'<video src="'+url+'" controls autoplay playsinline'+(once?' controlslist="nodownload"':'')+'></video>':'<audio src="'+url+'" controls autoplay'+(once?' controlslist="nodownload"':'')+'></audio>';
- o.innerHTML='<div class="fvb"><div class="fvh"><span>'+esc(name||'')+(once?' · view once':'')+'</span>'+(once?'':'<a class="mini" href="'+url+'" download="'+esc(name||'file')+'">Save</a>')+'<button type="button" class="mini" id="fvx">Close</button></div><div class="fvc">'+el+'</div>'+(once?'<small>This file can\'t be opened again. Closing it removes it for you.</small>':'')+'</div>';
+ o.innerHTML='<div class="fvb"><div class="fvh"><span>'+esc(name||'')+(once?' · view once':'')+'</span>'+(once?'':'<a class="mini" href="'+url+'" download="'+esc(name||'file')+'">Save</a>')+'<button type="button" class="mini" id="fvx">Cancel</button></div><div class="fvc">'+el+'</div>'+(once?'<small>This file can\'t be opened again. Closing it removes it for you.</small>':'')+'</div>';
  const close=()=>{o.remove();URL.revokeObjectURL(url);document.removeEventListener('keydown',kd)},kd=e=>{if(e.key==='Escape')close()};
  o.addEventListener('click',e=>{if(e.target===o||e.target.id==='fvx')close()});if(once)o.addEventListener('contextmenu',e=>e.preventDefault());document.addEventListener('keydown',kd);document.body.appendChild(o)};
 dv.addEventListener('click',async e=>{const b=e.target.closest('[data-a="openF"]');if(!b||b.disabled)return;const once=b.dataset.once==='1'&&!Q().isCreator;

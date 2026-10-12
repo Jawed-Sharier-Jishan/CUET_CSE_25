@@ -1540,6 +1540,8 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 #fv.rv .rvt table,#fv.rv .fvc.doc table{border-collapse:collapse;font-size:12px}
 #fv.rv .rvt td,#fv.rv .rvt th,#fv.rv .fvc.doc td,#fv.rv .fvc.doc th{border:1px solid #c7d6e0;padding:4px 8px;vertical-align:top}
 #fv.rv .rvm{margin:0;padding:48px 24px;text-align:center;color:#3a4f5e}
+#fv.rv .rvm .mini{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 18px;color:#00566a;border-color:#00566a;text-decoration:none}
+#fv.rv .rvm .mini:hover{background:#00566a;color:#fff}
 @media(max-width:600px){#fv.rv{padding:6px}#fv.rv .fvb{width:100%;height:96vh;max-height:96vh}#fv.rv .fvc.doc{padding:14px 12px}}
 
 /* =====================================================================
@@ -1636,9 +1638,19 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 #fv{padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
 #fv .fvb{max-height:calc(100dvh - 24px)}
 #fv.rv .fvb{height:calc(100dvh - 24px);max-height:calc(100dvh - 24px)}
-#fv .fvh{padding-right:96px}#fv .fvh span{min-width:0}
+#fv .fvh span{min-width:0}
+/* Save + Cancel: same size, same colour, side by side; Cancel turns red on hover */
+#fv .fvh .mini{flex:none;box-sizing:border-box;min-height:32px;min-width:64px;padding:6px 14px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;letter-spacing:.1em;text-transform:uppercase;text-decoration:none}
+#fv #fvx:hover,#fv #fvx:focus-visible{background:#e5333f;border-color:#e5333f;color:#fff;box-shadow:0 0 12px rgba(229,51,63,.55)}
+:root[data-theme="light"] #fv #fvx:hover,:root[data-theme="light"] #fv #fvx:focus-visible{background:#d62839;border-color:#d62839;color:#fff;box-shadow:none}
+/* phones: Cancel stays pinned top-right so it is always reachable */
+@media(max-width:820px){
+#fv .fvh{padding-right:96px}
 #fv #fvx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;z-index:100000;min-width:44px;min-height:40px;padding:6px 14px;background:rgba(3,7,18,.92);color:var(--acc);border:1px solid var(--acc);border-radius:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
 :root[data-theme="light"] #fv #fvx{background:#fff;color:var(--acc)}
+#fv #fvx:hover,#fv #fvx:focus-visible{background:#e5333f;border-color:#e5333f;color:#fff}
+:root[data-theme="light"] #fv #fvx:hover,:root[data-theme="light"] #fv #fvx:focus-visible{background:#d62839;border-color:#d62839;color:#fff}
+}
 @media(max-width:768px){.links{top:calc(64px + env(safe-area-inset-top,0px))}}
 </style>
 </head>
