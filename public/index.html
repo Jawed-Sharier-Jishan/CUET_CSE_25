@@ -1621,6 +1621,23 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 :root[data-theme="light"] .term3d .term .top{background:#10243a}
 @media(max-width:700px){.term3d .term .top{transform:translateZ(20px)}.term3d .term pre{transform:translateZ(12px)}.t3b.b3{transform:translateZ(-18px)}}
 @media(prefers-reduced-motion:reduce){.t3{transition:none}}
+/* ===== phone fixes: solid top bar, marks box on the right, dev links wrap, file viewer close ===== */
+@media(max-width:768px){nav{background:#030712}:root[data-theme="light"] nav{background:#fff}}
+.mkf{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;margin:0 0 0 auto;flex:none}
+#dashView .dash-content .fr.mkf{display:flex;grid-template-columns:none;width:auto;margin:0 0 0 auto;align-items:center;gap:6px}
+#dashView .dash-content .mkf .in{width:62px!important;min-width:0;flex:none;height:36px;min-height:36px;padding:4px 6px}
+#dashView .dash-content .mkf .mini{flex:none!important;width:auto!important;min-width:0;white-space:nowrap;padding:6px 9px;min-height:36px}
+.ctm{display:flex;align-items:center;gap:10px}
+.ctm>div:first-child{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
+.cta{justify-content:flex-end;flex-wrap:wrap;gap:6px;margin-top:8px}
+#dashView .class-item:has(>.mkf){flex-wrap:nowrap}
+#dashView .class-item:has(>.mkf)>span:first-child{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
+.devl{flex-wrap:wrap}
+#fv{padding-top:max(12px,env(safe-area-inset-top,0px));padding-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+#fv .fvb{max-height:calc(100dvh - 24px)}
+#fv.rv .fvb{height:calc(100dvh - 24px);max-height:calc(100dvh - 24px)}
+#fv .fvh{padding-right:96px}#fv .fvh span{min-width:0}
+#fv #fvx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;z-index:100000;min-width:44px;min-height:44px;padding:0 14px;font-size:13px;background:#c81e3a;color:#fff;border:1px solid #ff6b81;border-radius:6px}
 </style>
 </head>
 <body>
