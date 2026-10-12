@@ -1637,7 +1637,9 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 #fv .fvb{max-height:calc(100dvh - 24px)}
 #fv.rv .fvb{height:calc(100dvh - 24px);max-height:calc(100dvh - 24px)}
 #fv .fvh{padding-right:96px}#fv .fvh span{min-width:0}
-#fv #fvx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;z-index:100000;min-width:44px;min-height:44px;padding:0 14px;font-size:13px;background:#c81e3a;color:#fff;border:1px solid #ff6b81;border-radius:6px}
+#fv #fvx{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);right:10px;z-index:100000;min-width:44px;min-height:40px;padding:6px 14px;background:rgba(3,7,18,.92);color:var(--acc);border:1px solid var(--acc);border-radius:0;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+:root[data-theme="light"] #fv #fvx{background:#fff;color:var(--acc)}
+@media(max-width:768px){.links{top:calc(64px + env(safe-area-inset-top,0px))}}
 </style>
 </head>
 <body>

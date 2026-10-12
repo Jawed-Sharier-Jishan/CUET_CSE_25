@@ -179,6 +179,7 @@ const RMIME={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/
  RTXT=/^(txt|md|json|xml|html?|css|js|ts|c|h|cpp|hpp|java|py|sql|log|ini|ya?ml|tex|sh|asm|m|v|vhd|vhdl)$/,RCDN='https://cdnjs.cloudflare.com/ajax/libs/',rjs={},
  loadJs=u=>rjs[u]||(rjs[u]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>{delete rjs[u];no(Error('tool'))};document.head.appendChild(s)}));
 async function viewRes(n){
+ if(matchMedia('(pointer:coarse)').matches||innerWidth<=820){const w=window.open('/api/dl/'+encodeURIComponent(n.id)+'?open=1','_blank');if(w)return;location.href='/api/dl/'+encodeURIComponent(n.id)+'?open=1';return}
  document.getElementById('fv')?.remove();
  const o=document.createElement('div'),dl='/api/dl/'+encodeURIComponent(n.id),urls=[];let dead=false;o.id='fv';o.className='rv';
  o.innerHTML='<div class="fvb"><div class="fvh"><span>'+esc(n.t)+'</span><a class="mini" href="'+dl+'" download="'+esc(n.t)+'">Save</a><button type="button" class="mini" id="fvx">Close</button></div><div class="fvc rvc"><p class="rvm">Loading…</p></div></div>';
