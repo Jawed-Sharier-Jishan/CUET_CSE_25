@@ -1657,6 +1657,17 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 :root[data-theme="light"] #fv #fvx:hover,:root[data-theme="light"] #fv #fvx:focus-visible{background:#d62839;border-color:#d62839;color:#fff}
 }
 @media(max-width:768px){.links{top:calc(64px + env(safe-area-inset-top,0px))}}
+
+/* ===== tests: done tag on top, marks at bottom; courses files aligned right ===== */
+.ctr .cth{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.ctr .cth>div:first-child{flex:1 1 0;min-width:0;overflow-wrap:anywhere}
+.ctr .cth>.pill{flex:none;margin:0}
+.ctr .ctb{display:flex;justify-content:flex-end;margin-top:10px}
+#courseDetails .class-item{gap:10px}
+#courseDetails .class-item>span:first-child{flex:1 1 0;min-width:0;overflow-wrap:anywhere;text-align:left}
+#courseDetails .class-item>a.mini,#courseDetails .class-item>.mini{flex:none;margin-left:auto;display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:36px;padding:6px 12px;text-align:center}
+#courseDetails .class-item>a.mini .ic{width:18px;height:18px}
+#courseDetails .class-item>span:last-child:not(:first-child){flex:none;margin-left:auto;text-align:right;display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 </style>
 <script>
 /* BACK BUTTON MANAGER
