@@ -180,6 +180,9 @@ const RMIME={pdf:'application/pdf',png:'image/png',jpg:'image/jpeg',jpeg:'image/
  loadJs=u=>rjs[u]||(rjs[u]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=()=>{delete rjs[u];no(Error('tool'))};document.head.appendChild(s)}));
 async function viewRes(n){
  document.getElementById('fv')?.remove();
+ /* phones: use the phone's own viewer. PDFs, images, video, audio and text open in a new tab; every other type is handed over as a normal download (no blank page) */
+ if(matchMedia('(pointer:coarse)').matches||innerWidth<=820){const u='/api/dl/'+encodeURIComponent(n.id)+'?open=1';
+  if(/\.(pdf|png|jpe?g|gif|webp|txt|csv|mp4|mp3)$/i.test(n.t)){const w=window.open(u,'_blank');if(!w)location.href=u}else location.href=u;return}
  const nat=(matchMedia('(pointer:coarse)').matches||innerWidth<=820)?' data-native="1"':'',o=document.createElement('div'),dl='/api/dl/'+encodeURIComponent(n.id),urls=[];let dead=false;o.id='fv';o.className='rv';
  o.innerHTML='<div class="fvb"><div class="fvh"><span>'+esc(n.t)+'</span><a class="mini" href="'+dl+'" download="'+esc(n.t)+'"'+nat+'>Save</a><button type="button" class="mini" id="fvx" aria-label="Close" title="Close">\u2715</button></div><div class="fvc rvc"><p class="rvm">Loading…</p></div></div>';
  const body=o.querySelector('.rvc'),kd=e=>{if(e.key==='Escape')close()},close=()=>{dead=true;o.remove();urls.forEach(u=>URL.revokeObjectURL(u));document.removeEventListener('keydown',kd)},
