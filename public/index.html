@@ -1668,6 +1668,15 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 #courseDetails .class-item>a.mini,#courseDetails .class-item>.mini{flex:none;margin-left:auto;display:inline-flex;align-items:center;justify-content:center;min-width:40px;min-height:36px;padding:6px 12px;text-align:center}
 #courseDetails .class-item>a.mini .ic{width:18px;height:18px}
 #courseDetails .class-item>span:last-child:not(:first-child){flex:none;margin-left:auto;text-align:right;display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+
+/* ===== sidebar unread badges, undo bar, CT countdown, attendance card ===== */
+.dash-link{position:relative}
+.dash-link .nbd{margin-left:auto;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--acc2);color:var(--accfg,#000);font:700 10px/18px var(--head);text-align:center;flex:none}
+#dashView.nav-c .dash-link .nbd{position:absolute;top:2px;right:6px;margin:0}
+#undoBar{position:fixed;left:50%;bottom:78px;transform:translateX(-50%);z-index:270;display:flex;align-items:center;gap:12px;max-width:92vw;background:var(--bg);border:1px solid var(--acc2);color:#fff;padding:8px 12px;box-shadow:0 0 18px var(--acc-glow,rgba(0,0,0,.4));font-size:12px}
+:root[data-theme="light"] #undoBar{color:#111}
+.cdwn{margin-top:6px}.cdbig{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-top:4px}.cdbig .cdn{font:700 24px var(--head);color:var(--acc)}
+.class-item.att{gap:10px}.class-item.att>span:first-child{flex:1 1 0;min-width:0}.class-item.att>.row{flex:none;margin-left:auto;justify-content:flex-end;gap:6px}
 </style>
 <script>
 /* BACK BUTTON MANAGER
