@@ -295,6 +295,7 @@ p { color: var(--mut); max-width: 60ch; margin: 0 0 16px; font-size: 14px; }
   color: #fff;
   box-shadow: 0 0 25px var(--acc2-glow);
 }
+#dashAdmin.on{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
 .btn.nav-btn {
   margin: 0;
   padding: 6px 14px;
@@ -972,9 +973,6 @@ h2{animation:none}
 .x:hover{color:var(--acc2);border-color:var(--acc2)}
 .mini{background:none;border:1px solid var(--line);color:var(--acc);padding:4px 10px;cursor:pointer;font:10px var(--head);letter-spacing:.1em;text-transform:uppercase}
 .mini:hover{background:var(--acc);color:var(--accfg)}
-.adm-tag{display:inline-block;vertical-align:middle;margin:0 6px;padding:1px 5px;border-radius:3px;font:700 8px/1.5 var(--head);letter-spacing:.1em;text-transform:uppercase;color:var(--accfg);background:var(--acc);white-space:nowrap;pointer-events:none}
-.tag .adm-tag{margin:0 0 0 8px}
-.mini .adm-tag{margin:0 0 0 6px}
 
 .mini.rm:hover,.mini.rm:focus-visible{background:#e5333f;border-color:#e5333f;color:#fff;box-shadow:0 0 12px rgba(229,51,63,.55)}
 .pill.on{border-color:var(--acc);color:var(--acc)}
@@ -1881,7 +1879,7 @@ ready(function(){
   <header class="dash-header">
    <button class="ib" id="navToggle" aria-label="Toggle navigation panel" aria-expanded="true" aria-controls="dashSide" title="Toggle navigation"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
    <div style="margin-right:auto;margin-left:14px"><h3 style="color:#fff" id="dashWelcome">Good Day, Student</h3><span style="font-size:11px;color:var(--mut)" id="dashDate"></span></div>
-   <div class="dash-actions" style="display:flex;gap:12px;align-items:center"><span id="dashUserTag" style="color:var(--acc);font-weight:700;font-size:11px"></span><button type="button" class="hav" id="hav" title="Open profile" aria-label="Open profile"></button><button class="ib bell" id="bell" aria-label="Alerts"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"/><path d="M10 21h4"/></svg><b id="bc" hidden></b></button><button class="ib" id="dsnd" aria-pressed="true" aria-label="Toggle sound" title="Sound"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 010 7"/></svg></button><button class="btn nav-btn" id="dashHome" title="Back to public site">Site</button><button class="btn nav-btn" id="dashLogout">Log Out</button></div>
+   <div class="dash-actions" style="display:flex;gap:12px;align-items:center"><span id="dashUserTag" style="color:var(--acc);font-weight:700;font-size:11px"></span><button type="button" class="hav" id="hav" title="Open profile" aria-label="Open profile"></button><button class="ib bell" id="bell" aria-label="Alerts"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0112 0v5l2 2H4z"/><path d="M10 21h4"/></svg><b id="bc" hidden></b></button><button class="ib" id="dsnd" aria-pressed="true" aria-label="Toggle sound" title="Sound"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 010 7"/></svg></button><button class="btn nav-btn" id="dashAdmin" type="button" hidden aria-pressed="false" title="Show or hide admin options">Admin</button><button class="btn nav-btn" id="dashHome" title="Back to public site">Site</button><button class="btn nav-btn" id="dashLogout">Log Out</button></div>
   </header>
   <div id="offlineBanner" class="offline-banner" hidden role="status"></div>
   <div class="dash-content" id="dc"></div>
@@ -2536,6 +2534,9 @@ const tm=s=>+s.slice(0,2)*60+ +s.slice(3),nowM=()=>{const n=new Date();return n.
 const toast=t=>{const e=D.getElementById('toast');if(!e)return;e.textContent='> '+t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1800)};
 const snd=n=>{try{window.S[n]()}catch(e){}};
 let user=null,db=null,tab='home',cal=day0(),sel=iso(day0()),rf='';
+/* ADMIN switch: staff see the normal student view until they press Admin; then admin options appear */
+let admOn=false;try{admOn=sessionStorage.getItem('admOn')==='1'}catch(e){}
+function applyRole(){if(!db)return;if(db.rl===undefined)db.rl=db.role;const a=db.rl==='admin';if(a)db.role=admOn?'admin':'student';const b=$('#dashAdmin');if(b){b.hidden=!a;b.classList.toggle('on',a&&admOn);b.setAttribute('aria-pressed',String(a&&admOn))}}
 try{tab=localStorage.getItem(K+'tab')||'home'}catch(e){}
 const DT=['home','calendar','courses','cts','resources','notices','chat','directory','projects','gallery','feedback','profile','members','polls','vacation','routine','alerts'],SLG={cts:'tests',directory:'classmates'},UNS={tests:'cts',classmates:'directory'},slug=t=>SLG[t]||t,pathTab=()=>{const m=location.pathname.match(/^\/([\w-]+)\/?$/);if(!m)return null;const t=UNS[m[1]]||m[1];return DT.includes(t)?t:null};
 const hm0=pathTab();if(hm0&&(sessionStorage.getItem('currentUser')||!/^(projects|gallery)$/.test(hm0)))tab=hm0;let ni=0;const sc={};try{if(history.state&&history.state.i)ni=history.state.i}catch(e){}
@@ -2628,7 +2629,7 @@ V.polls=()=>H('Polls','Vote (you can change your vote). Results are stored in th
  '<div class="schedule-card"><span class="tag">Create poll</span><form data-f="addPoll" class="col"><label class="fl">Question<input class="in" name="q" required maxlength="120"></label><label class="fl">Options (one per line, at least 2)<textarea class="in" name="o" rows="3" required></textarea></label><div><button class="btn p">Create</button></div></form></div>';
 
 V.profile=()=>{const p=db.profile;
- return H('Profile','Student ID: '+esc(user)+' · '+(db.isCreator?'Developer':db.tier&&db.tier.cr&&db.tier.adm?'Admin · CR':db.tier&&db.tier.cr?'CR':db.role==='admin'?'Admin':'Student')+(db.sec?' · Section '+db.sec+', Group '+db.g:' · no section (ID is not 2504xxx)')+'')+
+ return H('Profile','Student ID: '+esc(user)+' · '+(db.isCreator?'Developer':db.tier&&db.tier.cr&&db.tier.adm?'Admin · CR':db.tier&&db.tier.cr?'CR':db.rl==='admin'||db.role==='admin'?'Admin':'Student')+(db.sec?' · Section '+db.sec+', Group '+db.g:' · no section (ID is not 2504xxx)')+'')+
  '<div class="schedule-card"><form data-f="saveProfile" class="col"><div class="fr">'+F('name','Full name','text',p.name,'maxlength="60"')+F('email','Email','email',p.email)+F('phone','Phone','tel',p.phone)+S('blood','Blood group',[['','—'],'A+','A-','B+','B-','AB+','AB-','O+','O-'].map(x=>Array.isArray(x)?x:[x,x]),p.blood)+'</div>'+
  '<div class="fr">'+F('term','Level / Term','text',p.term,'maxlength="30"')+'</div><div><button class="btn p">Save profile</button></div></form></div>'+
  (db.role==='admin'?'<div class="schedule-card"><span class="tag">Data</span><div><button class="btn" data-a="export">Export JSON</button></div></div>':'')};
@@ -2640,6 +2641,7 @@ V.projects=()=>H('Projects','Shown on the public site. Add your own builds.')+
  '<div class="schedule-card"><span class="tag">Add project</span><form data-f="addProject" class="fr">'+F('t','Title','text','','required maxlength="60"')+S('c','Category',['Web','Embedded','AI','Game','Mobile','Other'].map(x=>[x,x]))+S('s','Status',['Idea','In progress','Completed'].map(x=>[x,x]))+F('u','Link (optional)','text','')+F('d','Description','text','','required maxlength="200"')+'<button class="btn p">Add</button></form></div>';
 function render(){
  const u=sessionStorage.getItem('currentUser');if(!u||dv.hidden||!db)return;
+ applyRole();
  if(tab==='polls')tab='chat';if(tab==='vacation'||tab==='routine')tab='calendar';if(tab==='alerts')tab='notices';
  if(!V[tab]||(tab==='members'&&db.role!=='admin'))tab='home';
  dv.querySelectorAll('.dash-link[data-v]').forEach(a=>a.classList.toggle('active',a.dataset.v===tab&&a.closest('.dash-nav')!==null));
@@ -2686,6 +2688,7 @@ dv.addEventListener('submit',e=>{const f=e.target.closest('form[data-f]');if(!f)
  if(n==='addPoll')v.o=v.o.split('\n');
  done(()=>n==='saveProfile'?call('PUT','/profile',v):call('POST','/'+KM[n],v)).then(ok=>ok&&toast('SAVED'))});
 (()=>{const nt=$('#navToggle'),mobile=()=>matchMedia('(max-width:1024px)').matches,set=c=>{if(mobile()){dv.classList.toggle('mobile-nav-open',c);nt.setAttribute('aria-expanded',String(c))}else{dv.classList.toggle('nav-c',c);nt.setAttribute('aria-expanded',String(!c));try{localStorage.setItem(K+'navc',c?'1':'0')}catch(e){}}};dv.classList.remove('mobile-nav-open');if(!mobile()){let c=false;try{c=localStorage.getItem(K+'navc')==='1'}catch(e){}set(c)}nt.addEventListener('click',()=>{if(mobile())set(!dv.classList.contains('mobile-nav-open'));else set(!dv.classList.contains('nav-c'))});dv.addEventListener('click',e=>{if(e.target===dv&&dv.classList.contains('mobile-nav-open'))set(false)});dv.querySelector('.dash-nav').addEventListener('click',e=>{if(e.target.closest('.dash-link')&&mobile())set(false)});addEventListener('keydown',e=>{if(e.key==='Escape'&&dv.classList.contains('mobile-nav-open'))set(false)});addEventListener('resize',()=>{if(!mobile())dv.classList.remove('mobile-nav-open')})})();
+$('#dashAdmin').addEventListener('click',()=>{admOn=!admOn;try{sessionStorage.setItem('admOn',admOn?'1':'0')}catch(e){}applyRole();if(!admOn&&tab==='members')go('home');else render();toast(admOn?'ADMIN OPTIONS ON':'ADMIN OPTIONS OFF')});
 $('#dashHome').addEventListener('click',()=>{$('#mainPortal').hidden=false;dv.hidden=true;scrollTo(0,0);try{history.replaceState(null,'','/')}catch(e){}});
 new MutationObserver(sync).observe(dv,{attributes:true,attributeFilter:['hidden']});
 setInterval(()=>{if(!dv.hidden&&!dc.contains(D.activeElement))refresh()},30000);
