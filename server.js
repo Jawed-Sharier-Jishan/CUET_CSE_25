@@ -14,7 +14,8 @@ CREATE INDEX IF NOT EXISTS items_kind ON items(kind);
 CREATE TABLE IF NOT EXISTS votes(poll TEXT,uid TEXT,opt INTEGER,PRIMARY KEY(poll,uid));
 CREATE TABLE IF NOT EXISTS push_subscriptions(endpoint TEXT PRIMARY KEY,uid TEXT NOT NULL,data TEXT NOT NULL,created INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS push_subscriptions_uid ON push_subscriptions(uid);
-CREATE TABLE IF NOT EXISTS push_preferences(uid TEXT PRIMARY KEY,data TEXT NOT NULL);`);
+CREATE TABLE IF NOT EXISTS push_preferences(uid TEXT PRIMARY KEY,data TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS act_log(id INTEGER PRIMARY KEY AUTOINCREMENT,ts INTEGER NOT NULL,uid TEXT NOT NULL,act TEXT NOT NULL,txt TEXT NOT NULL);`);
 const all_ = (s, ...a) => db.prepare(s).all(...a), one = (s, ...a) => db.prepare(s).get(...a), run = (s, ...a) => db.prepare(s).run(...a);
 const uploadCloudBuffer = (buffer, options) => new Promise((resolve, reject) => {
   if (!cloudinary) return reject(new Error('Cloudinary is not configured'));
@@ -116,6 +117,18 @@ const flags = r => ({ adm: /admin/.test(r || ''), cr: /cr/.test(r || '') });
 const mkRole = (adm, cr) => adm && cr ? 'admin+cr' : adm ? 'admin' : cr ? 'cr' : 'student';
 const isStaff = u => !!u && (u.id === CID || u.role !== 'student');
 const put = (kind, owner, data) => { const id = rid(); run('INSERT INTO items VALUES(?,?,?,?,?)', id, kind, owner, JSON.stringify(data), Date.now()); return id; };
+// ---- admin activity log: who added / edited / cancelled / removed what (last 1000 kept, visible to admins only) ----
+const KL = { ct: 'test', course: 'course', routine: 'class', vac: 'vacation', notice: 'notice', res: 'resource', project: 'project', event: 'event', poll: 'poll', node: 'file', cancel: 'class' };
+const descItem = (kind, d) => {
+  if (kind === 'ct') return (d.ty || 'CT') + ' ' + (d.c || '') + ' · ' + (d.t || '') + (d.d ? ' (' + d.d + ')' : '');
+  if (kind === 'course') return (d.code || '') + ' ' + (d.t || '');
+  if (kind === 'routine') return (d.c || '') + ' ' + (d.s || '') + '-' + (d.e || '');
+  if (kind === 'cancel') { let c = ''; try { const r = d.rid && one('SELECT data FROM items WHERE id=?', d.rid); c = r ? JSON.parse(r.data).c : ''; } catch {} return (c || 'class') + ' on ' + (d.d || ''); }
+  if (kind === 'poll') return d.q || '';
+  return d.t || '';
+};
+const logAct = (u, act, txt) => { try { run('INSERT INTO act_log(ts,uid,act,txt) VALUES(?,?,?,?)', Date.now(), u.id, act, String(txt || '').slice(0, 200)); run('DELETE FROM act_log WHERE id <= (SELECT MAX(id) - 1000 FROM act_log)'); } catch (e) { console.warn('logAct:', e.message); } };
+
 
 // ---- official Level-1 Term-I routine (Batch 2025, from the department PDF) ----------
 // Periods: 1 CT 08:10-09:00 | 2 09:00-09:45 | 3 09:45-10:30 | (break) | 4 10:45-11:30 | 5 11:30-12:15 | 6 12:15-13:00 | (lunch) | 7 13:45-14:30 | 8 14:30-15:15 | 9 15:15-16:00
@@ -474,7 +487,7 @@ async function api(req, res, m, p) {
     if (auth().id !== CID) throw { code: 403, error: 'Only the site developer can change roles' };
     const t = one('SELECT id,role FROM users WHERE id=?', String(b.id)); if (!t) bad('Unknown user'); const f = flags(t.role);
     const adm = t.id === CID ? true : 'adm' in b ? !!b.adm : f.adm, cr = 'cr' in b ? !!b.cr : f.cr;
-    run('UPDATE users SET role=? WHERE id=?', mkRole(adm, cr), t.id); return send(res, 200, { ok: 1 });
+    run('UPDATE users SET role=? WHERE id=?', mkRole(adm, cr), t.id); logAct(auth(), 'role', t.id + ': admin ' + (adm ? 'on' : 'off') + ', CR ' + (cr ? 'on' : 'off')); return send(res, 200, { ok: 1 });
   }
   if (m === 'POST' && p === '/api/alertread') { // per-account read marks, so the alert number is the same on every device
     const u = auth(), row = all_("SELECT id,data FROM items WHERE kind='rd' AND owner=?", u.id)[0], d = row ? JSON.parse(row.data) : { base: Date.now() - 3 * 864e5, ids: {} };
@@ -520,7 +533,7 @@ async function api(req, res, m, p) {
     if (t.id === u.id) bad('Change your own password from your profile');
     if (u.id !== CID && (t.id === CID || flags(t.role).adm)) throw { code: 403, error: 'Only the site developer can reset an admin\'s password' };
     const A = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789', temp = Array.from(crypto.randomBytes(10), c => A[c % A.length]).join('');
-    run('UPDATE users SET pw=? WHERE id=?', hash(temp), t.id); run('DELETE FROM sessions WHERE uid=?', t.id);
+    run('UPDATE users SET pw=? WHERE id=?', hash(temp), t.id); run('DELETE FROM sessions WHERE uid=?', t.id); logAct(u, 'password reset', 'student ' + t.id);
     return send(res, 200, { ok: 1, id: t.id, temp });
   }
   if (m === 'POST' && p === '/api/mark') { const u = auth(), c = one("SELECT id FROM items WHERE kind IN ('ct','event') AND id=?", String(b.ct)); if (!c) bad('Unknown test'); const v = String(b.v ?? '').trim().slice(0, 6); if (v !== '' && !(+v >= 0)) bad('Marks must be a number');
@@ -534,7 +547,8 @@ async function api(req, res, m, p) {
     if (!roomOk(r, u)) throw { code: 403, error: 'Not your room' }; if (!t && !img) bad('Empty message');
     if (cloudinary && img) { const result = await uploadCloudBuffer(Buffer.from(img.slice(img.indexOf(',') + 1), 'base64'), { folder: 'cuet-cse25/chat', resource_type: 'image' }); imgAsset = cloudAsset(result); img = result.secure_url; }
     const mid = put('msg', u.id, { r, t, img, ...(imgAsset ? { imgAsset } : {}) }); pushAlert(u.id, 'msg', { r, t, img: !!img }, mid); return send(res, 200, { ok: 1 }); }
-  if (m === 'POST' && p === '/api/chatclear') { admin(); const r = String(b.room); if (!ROOMS.includes(r)) bad('Unknown room'); for (const y of all_("SELECT id,data FROM items WHERE kind='msg'")) if (JSON.parse(y.data).r === r) { dropMsg(y); run('DELETE FROM items WHERE id=?', y.id); } return send(res, 200, { ok: 1 }); }
+  if (m === 'POST' && p === '/api/chatclear') { admin(); const r = String(b.room); if (!ROOMS.includes(r)) bad('Unknown room'); for (const y of all_("SELECT id,data FROM items WHERE kind='msg'")) if (JSON.parse(y.data).r === r) { dropMsg(y); run('DELETE FROM items WHERE id=?', y.id); } logAct(auth(), 'cleared', 'chat room ' + r); return send(res, 200, { ok: 1 }); }
+  if (m === 'GET' && p === '/api/log') { admin(); return send(res, 200, all_('SELECT l.id,l.ts,l.uid,l.act,l.txt,u.name FROM act_log l LEFT JOIN users u ON u.id=l.uid ORDER BY l.id DESC LIMIT 200')); }
   if (m === 'GET' && (x = p.match(/^\/api\/user\/([A-Za-z0-9_-]+)$/))) { const u = auth(), t = one('SELECT id,name,role,profile FROM users WHERE id=?', x[1]); if (!t) throw { code: 404, error: 'Not found' }; const q = JSON.parse(t.profile || '{}'), priv = isStaff(u) || u.id === t.id;
     const fl = flags(t.id === CID ? mkRole(true, flags(t.role).cr) : t.role); return send(res, 200, { id: t.id, name: t.name, role: t.id === CID || t.role !== 'student' ? 'admin' : 'student', adm: fl.adm, cr: fl.cr, creator: t.id === CID, ...place(t.id), photo: q.photo || '', fb: q.fb || '', ig: q.ig || '', li: q.li || '', ot: q.ot || '', school: q.school || '', college: q.college || '', dist: q.dist || '', town: q.town || '', bday: /^\d{4}-\d\d-\d\d$/.test(q.dob || '') ? q.dob.slice(5) : '', ...(priv ? { email: q.email || '', phone: q.phone || '', blood: q.blood || '' } : {}) }); }
   if (m === 'GET' && (x = p.match(/^\/api\/dl\/(\w+)$/))) { auth(); const ns = nodes(), n = ns.find(y => y.id === x[1]); if (!n || n.ty === 'link') throw { code: 404, error: 'Not found' };
@@ -555,13 +569,13 @@ async function api(req, res, m, p) {
     const kind = x[1], u = auth(); if (ADMIN.has(kind)) admin(); const d = clean(kind, b);
     if (d.__upg) { const rw = one('SELECT data FROM items WHERE id=?', d.__upg), y = JSON.parse(rw.data); y.rm = 1; run('UPDATE items SET data=? WHERE id=?', JSON.stringify(y), d.__upg); return send(res, 200, { id: d.__upg }); }
     if (kind === 'course' && all_("SELECT data FROM items WHERE kind='course'").some(r => JSON.parse(r.data).code === d.code)) throw { code: 409, error: 'Course already exists' };
-    const id = put(kind, u.id, d); pushAlert(u.id, kind, d, id); return send(res, 200, { id });
+    const id = put(kind, u.id, d); if (ADMIN.has(kind)) logAct(u, kind === 'cancel' ? (d.rm ? 'removed' : 'cancelled') : 'added', KL[kind] + ' · ' + descItem(kind, d)); pushAlert(u.id, kind, d, id); return send(res, 200, { id });
   }
   if ((m === 'PATCH' || m === 'PUT' || m === 'DELETE') && (x = p.match(/^\/api\/items\/(\w+)$/))) {
     const u = auth(), row = one('SELECT * FROM items WHERE id=?', x[1]); if (!row) throw { code: 404, error: 'Not found' };
     if (m === 'PUT') { admin(); if (!['event', 'ct', 'vac', 'routine'].includes(row.kind)) bad('Not editable'); const old = JSON.parse(row.data), o = clean(row.kind, { ...old, ...b }, row.id), nd = { ...old, ...o };
       if (row.kind === 'ct') nd.done = old.done || 0; if (row.kind === 'event') nd.sh = old.sh || 1;
-      run('UPDATE items SET data=? WHERE id=?', JSON.stringify(nd), row.id); return send(res, 200, { ok: 1 }); }
+      run('UPDATE items SET data=? WHERE id=?', JSON.stringify(nd), row.id); logAct(u, 'edited', (KL[row.kind] || row.kind) + ' · ' + descItem(row.kind, nd)); return send(res, 200, { ok: 1 }); }
     if (m === 'PATCH') { admin(); const d = JSON.parse(row.data), wasCancelled = !!d.x;
       if (b.rs) { // reschedule = give a cancelled test a new date/time and bring it back (same limit checks as Restore)
         if (!(row.kind === 'ct' || (row.kind === 'event' && d.k === 'ct'))) bad('Only tests can be rescheduled');
@@ -570,11 +584,12 @@ async function api(req, res, m, p) {
         if (row.kind === 'ct') d.tm = TR.test(b.tm || '') ? b.tm : '';
         else { const old = d.s, m = z => +z.slice(0, 2) * 60 + +z.slice(3); d.s = TR.test(b.s || '') ? b.s : '';
           if (d.e) { const ne = old && d.s ? m(d.e) - m(old) + m(d.s) : -1; d.e = ne > m(d.s) && ne < 1440 ? String(Math.floor(ne / 60)).padStart(2, '0') + ':' + String(ne % 60).padStart(2, '0') : ''; } } };
-      if (row.kind === 'ct') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { if (!b.x && wasCancelled) { const cc = all_("SELECT data FROM items WHERE kind='course'").map(r => JSON.parse(r.data)).find(c => c.code === d.c); if (cc) checkLimit(cc, d.ty || 'CT', row.id, true); } d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'event') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { if (!b.x && wasCancelled && d.k === 'ct') checkEventTest(d, row.id, true); d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'notice' || row.kind === 'msg') d.pin = b.pin ? 1 : 0; else bad('Not editable'); if (b.rs) reschedule(); run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); if (row.kind === 'ct' && wasCancelled !== !!d.x) pushAlert(u.id, 'ct', b.rs ? { ...d, rs: 1 } : d, row.id + (d.x ? 'x' : 'r') + (b.rs ? d.rts : '')); if (row.kind === 'event' && wasCancelled !== !!d.x) pushAlert(u.id, 'event', b.rs ? { ...d, rs: 1 } : d, row.id + (d.x ? 'x' : 'r') + (b.rs ? d.rts : '')); return send(res, 200, { ok: 1 }); }
+      if (row.kind === 'ct') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { if (!b.x && wasCancelled) { const cc = all_("SELECT data FROM items WHERE kind='course'").map(r => JSON.parse(r.data)).find(c => c.code === d.c); if (cc) checkLimit(cc, d.ty || 'CT', row.id, true); } d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'event') { if ('done' in b) d.done = b.done ? 1 : 0; if ('x' in b) { if (!b.x && wasCancelled && d.k === 'ct') checkEventTest(d, row.id, true); d.x = b.x ? 1 : 0; d.xt = Date.now(); } } else if (row.kind === 'notice' || row.kind === 'msg') d.pin = b.pin ? 1 : 0; else bad('Not editable'); if (b.rs) reschedule(); run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id); if (row.kind === 'ct' && wasCancelled !== !!d.x) pushAlert(u.id, 'ct', b.rs ? { ...d, rs: 1 } : d, row.id + (d.x ? 'x' : 'r') + (b.rs ? d.rts : '')); if (row.kind === 'event' && wasCancelled !== !!d.x) pushAlert(u.id, 'event', b.rs ? { ...d, rs: 1 } : d, row.id + (d.x ? 'x' : 'r') + (b.rs ? d.rts : '')); if (row.kind !== 'msg') logAct(u, b.rs ? 'rescheduled' : 'x' in b ? (d.x ? 'cancelled' : 'restored') : 'done' in b ? (d.done ? 'marked done' : 'unmarked done') : 'pin' in b ? (d.pin ? 'pinned' : 'unpinned') : 'changed', (KL[row.kind] || row.kind) + ' · ' + descItem(row.kind, d)); return send(res, 200, { ok: 1 }); }
     // legacy personal calendar events (created before the calendar became admin-only) can still be removed by their owner
     const legacy = row.kind === 'event' && row.owner === u.id && !JSON.parse(row.data).sh;
     if (!legacy) { if (row.kind === 'msg') { if (!isStaff(u) && row.owner !== u.id) throw { code: 403, error: 'You can only delete your own messages' }; } else if (row.kind === 'photo') { if (!isStaff(u) && row.owner !== u.id) throw { code: 403, error: 'You can only delete your own photos' }; } else if (ADMIN.has(row.kind) || row.kind === 'fb') admin(); else throw { code: 403, error: 'Not allowed' }; }
     await deleteCloudAsset(JSON.parse(row.data).cloud);
+    if (ADMIN.has(row.kind)) { let od = {}; try { od = JSON.parse(row.data); } catch {} logAct(u, 'removed', (KL[row.kind] || row.kind) + ' · ' + descItem(row.kind, od)); }
     run('DELETE FROM items WHERE id=?', row.id);
     if (row.kind === 'msg') dropMsg(row);
     if (row.kind === 'node') { const ns = nodes(), dead = [row.id]; for (let i = 0; i < dead.length; i++) ns.filter(y => y.p === dead[i]).forEach(y => dead.push(y.id)); for (const id of dead) { const child = ns.find(y => y.id === id); await deleteCloudAsset(child?.cloud); run('DELETE FROM items WHERE id=?', id); try { fs.unlinkSync(path.join(UP, id)); } catch {} } }
