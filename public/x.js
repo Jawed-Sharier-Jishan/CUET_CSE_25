@@ -436,7 +436,14 @@ const cal0=V.calendar,rou0=V.routine,vac0=V.vacation,not0=V.notices,alt0=V.alert
 V.calendar=()=>{if(st.sch!=='routine'&&st.sch!=='vac')st.sch='cal';return T('sch',[['cal','Calendar'],['routine','Routine'],['vac','Vacation']])+(st.sch==='routine'?rou0():st.sch==='vac'?vac0():cal0())};
 V.routine=()=>{st.sch='routine';return V.calendar()};
 V.vacation=()=>{st.sch='vac';return V.calendar()};
-V.notices=()=>{if(st.nb!=='alerts')st.nb='notices';const u=ntf().filter(n=>unr(n,rd())).length;return T('nb',[['notices','Notices'],['alerts','Alerts'+(u?' ('+u+')':'')]])+(st.nb==='alerts'?alt0():not0())};
+/* ADMIN ACTIVITY LOG (Notices page, admin-only tab) */
+let logD=null,logT=0,logBusy=0;
+const logLoad=()=>{if(logBusy)return;logBusy=1;call('GET','/log').then(r=>{logD=Array.isArray(r)?r:[]}).catch(()=>{logD=logD||[]}).finally(()=>{logBusy=0;logT=Date.now();if(d.tab==='notices'&&st.nb==='log')d.render()})};
+A.x_logr=()=>{logT=0;logLoad()};
+const logView=()=>{if(!logBusy&&(!logD||Date.now()-logT>3e4))logLoad();let last='';
+ return H('Activity','Who added, edited, cancelled or removed things. Only admins can see this. The last 200 actions are shown.')+'<div class="row"><span class="tag">Admin log</span><button class="mini" data-a="x_logr">Refresh</button></div>'+(logD?(logD.length?logD.map(z=>{const dl=diff(iso(new Date(z.ts))),lb=dl===0?'Today':dl===-1?'Yesterday':fmt(new Date(z.ts)),h=lb!==last?'<div class="mo">'+lb+'</div>':'';last=lb;
+  return h+'<div class="class-item"><span><b>'+esc(z.name||z.uid)+'</b> <span class="pill">'+esc(z.act)+'</span><br><small>'+esc(z.txt)+' · '+when(z.ts)+'</small></span></div>'}).join(''):E('Nothing logged yet. Admin actions from now on will appear here.')):E('Loading…'))};
+V.notices=()=>{const ad=Q().role==='admin';if(st.nb!=='alerts'&&!(st.nb==='log'&&ad))st.nb='notices';const u=ntf().filter(n=>unr(n,rd())).length;return T('nb',[['notices','Notices'],['alerts','Alerts'+(u?' ('+u+')':'')]].concat(ad?[['log','Activity']]:[]))+(st.nb==='alerts'?alt0():st.nb==='log'?logView():not0())};
 V.alerts=()=>{st.nb='alerts';return V.notices()};
 V.chat=()=>{if(st.cx!=='polls')st.cx='chat';return T('cx',[['chat','Chat'],['polls','Polls']])+(st.cx==='polls'?pol0():cht0())};
 V.polls=()=>{st.cx='polls';return V.chat()};
