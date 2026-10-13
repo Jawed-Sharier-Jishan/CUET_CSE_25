@@ -70,14 +70,14 @@ const openEdit=(k,id)=>{const q=Q(),cl=q.courses.map(c=>[c.code,c.code+' — '+c
  else if(k==='vac'){it=q.vac.find(x=>x.id===id);if(!it)return;f=F('t','Title','text',it.t,'required maxlength="80"')+F('f','From','date',it.f,'required')+F('to','To','date',it.to,'required')}
  else if(k==='routine'){it=q.routine.find(x=>x.id===id);if(!it)return;note='This changes the class for every week.';f=S('c','Course',cs2(it.c),it.c)+S('d','Day',DN.slice(0,5).map((n,i)=>[i,n]),it.d)+F('s','Start','time',it.s,'required')+F('e','End','time',it.e,'required')+S('k','Kind',[['Class','Class'],['Lab','Lab']],it.k||'Class')+S('for','For',FR,it.for||'All')}
  else return;
- const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto';
+ const o=document.createElement('div');o.dataset.bk='1';o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto';
  o.innerHTML='<div class="schedule-card" style="max-width:460px;width:100%;max-height:92vh;overflow:auto"><span class="tag">Edit '+({event:'event',ct:'test',vac:'vacation',routine:'class'})[k]+'</span>'+(note?'<small>'+note+'</small>':'')+'<form class="col" id="edf">'+f+'<div class="row"><button class="btn p">Save</button><button type="button" class="mini" id="edx">Cancel</button></div></form></div>';
  const close=()=>o.remove();o.addEventListener('click',e=>{if(e.target===o||e.target.id==='edx')close()});
  o.querySelector('#edf').addEventListener('submit',e=>{e.preventDefault();const v=Object.fromEntries(new FormData(e.target));close();done(()=>call('PUT','/items/'+id,v)).then(ok=>ok&&toast('SAVED'))});
  document.body.appendChild(o)};
 /* RESCHEDULE a cancelled test: new date (+ optional time); brings it back and alerts students */
 const openRs=id=>{const t=myCts().find(z=>z.id===id);if(!t)return;
- const o=document.createElement('div');o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto';
+ const o=document.createElement('div');o.dataset.bk='1';o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto';
  o.innerHTML='<div class="schedule-card" style="max-width:460px;width:100%;max-height:92vh;overflow:auto"><span class="tag">Reschedule '+esc(t.c)+' · '+esc(ty(t))+'</span><small>'+esc(tn(t))+' was on '+t.d+'. Pick the new date; students get an alert.</small><form class="col" id="rsf">'+F('d','New date','date',t.d>=iso(day0())?t.d:iso(day0()),'required min="'+iso(day0())+'"')+F('tm','Start time (optional)','time',t.tm||'')+'<div class="row"><button class="btn p">Reschedule</button><button type="button" class="mini" id="rsx">Close</button></div></form></div>';
  const close=()=>o.remove();o.addEventListener('click',e=>{if(e.target===o||e.target.id==='rsx')close()});
  o.querySelector('#rsf').addEventListener('submit',e=>{e.preventDefault();const v=Object.fromEntries(new FormData(e.target));close();
@@ -444,6 +444,25 @@ d.after=()=>{const q=Q(),r=rd(),alerts=ntf(),n=alerts.filter(x=>unr(x,r)).length
  if(np&&!np.hidden){np.style.backgroundImage=p?'url('+p+')':'';np.textContent=p?'':ini}
  if(new URLSearchParams(location.search).has('openAlerts')){history.replaceState(null,'',location.pathname);d.go('alerts');return}
  if(d.tab==='chat'&&st.cx!=='polls')lc();ld2()};
+
+/* BACK BUTTON: sub-views inside a tab (folder, classmate card, gallery photo/album) get a history step */
+const BK=window.__bk,
+ bkSync=()=>{if(!BK||dv.hidden)return;const t=d.tab;
+  BK.sync('rn',t==='resources'&&!!st.rn,()=>{const c=nodeOf(st.rn);A.x_rn(c&&c.p?c.p:'');d.render()});
+  BK.sync('dm',t==='directory'&&!!st.dm,()=>{A.x_dm('');d.render()});
+  BK.sync('ga',t==='gallery'&&!!st.ga,()=>{st.ga='';d.render()});
+  BK.sync('gv',t==='gallery'&&!!st.gv,()=>{st.gv='';d.render()})};
+/* ADMIN tag: marks every card / button that only admins can see */
+const ADM='<span class="adm-tag" title="Only admins can see this">ADMIN</span>',
+ ADMB=['z_cx','z_rs','z_xcls','z_xrest','pin','togCt','z_role','z_pw','role','clrRoom','export','official'].map(a=>'button[data-a="'+a+'"]').join(','),
+ tagAdmin=()=>{const dc=$('#dc');if(!dc||Q().role!=='admin')return;const cards=new Set();
+  dc.querySelectorAll('form[data-f]:not([data-f=saveProfile]),form[data-x=node],form[data-x=amark]').forEach(f=>cards.add(f.closest('.schedule-card')||f));
+  dc.querySelectorAll('.schedule-card').forEach(c=>{const t=c.querySelector(':scope>.tag');if(t&&/^(Official routine|Data|Inbox)/.test(t.textContent))cards.add(c)});
+  cards.forEach(c=>{if(c.querySelector('.adm-tag'))return;const t=c.querySelector(':scope>.tag')||c.querySelector('.tag');if(t)t.insertAdjacentHTML('beforeend',ADM);else c.insertAdjacentHTML('afterbegin','<div>'+ADM+'</div>')});
+  const seen=new Set();dc.querySelectorAll(ADMB).forEach(b=>{const c=b.closest('.schedule-card');if(c&&cards.has(c))return;const p=b.parentElement;if(!p||seen.has(p)||p.querySelector(':scope>.adm-tag'))return;seen.add(p);b.insertAdjacentHTML('beforebegin',ADM)});
+  dc.querySelectorAll('[data-a^=del],[data-a^=z_rm],[data-a^=z_xrm],[data-a=z_edit]').forEach(b=>{if(b.dataset.adm)return;b.dataset.adm='1';b.title='Admin only · '+(b.getAttribute('aria-label')||b.title||'Delete')});
+  if(d.tab==='members'){const t=dc.querySelector('.hd .tag');if(t&&!t.querySelector('.adm-tag'))t.insertAdjacentHTML('beforeend',ADM)}};
+{const a0=d.after;d.after=()=>{const r=a0();bkSync();tagAdmin();return r}}
 if(d.db)d.render();
 })();
 

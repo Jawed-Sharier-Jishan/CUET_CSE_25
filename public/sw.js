@@ -1,4 +1,4 @@
-const CACHE = 'cuet-cse25-shell-v28-file-viewer';
+const CACHE = 'cuet-cse25-shell-v29-file-viewer';
 const RESOURCE_CACHE = 'cuet-cse25-saved-resources-v1';
 const SHELL = ['/', '/manifest.webmanifest', '/x.js', '/icon-180.png', '/icon-192.png', '/icon-512.png'];
 

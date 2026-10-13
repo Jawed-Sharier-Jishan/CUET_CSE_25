@@ -11,7 +11,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="CSE 25">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="google-site-verification" content="X8AU13jdNnuphS6FcBGT1wLyy9JaFgo1Oj9ma-64zgc" />
 <link rel="canonical" href="%%ORIGIN%%/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="CUET CSE '25">
@@ -973,6 +972,10 @@ h2{animation:none}
 .x:hover{color:var(--acc2);border-color:var(--acc2)}
 .mini{background:none;border:1px solid var(--line);color:var(--acc);padding:4px 10px;cursor:pointer;font:10px var(--head);letter-spacing:.1em;text-transform:uppercase}
 .mini:hover{background:var(--acc);color:var(--accfg)}
+.adm-tag{display:inline-block;vertical-align:middle;margin:0 6px;padding:1px 5px;border-radius:3px;font:700 8px/1.5 var(--head);letter-spacing:.1em;text-transform:uppercase;color:var(--accfg);background:var(--acc);white-space:nowrap;pointer-events:none}
+.tag .adm-tag{margin:0 0 0 8px}
+.mini .adm-tag{margin:0 0 0 6px}
+
 .mini.rm:hover,.mini.rm:focus-visible{background:#e5333f;border-color:#e5333f;color:#fff;box-shadow:0 0 12px rgba(229,51,63,.55)}
 .pill.on{border-color:var(--acc);color:var(--acc)}
 .pill.dn{border-color:var(--mut);color:var(--mut);box-shadow:none}
@@ -1657,6 +1660,50 @@ nav{padding-top:env(safe-area-inset-top,0px);padding-left:env(safe-area-inset-le
 }
 @media(max-width:768px){.links{top:calc(64px + env(safe-area-inset-top,0px))}}
 </style>
+<script>
+/* BACK BUTTON MANAGER
+   Popups, viewers and sub-views register a history step, so the phone Back button closes the
+   thing that is open (file viewer, photo, login, folder ...) instead of leaving the page.
+   Loaded first so its popstate listener runs before every other one. */
+(function(){
+var stack=[],seq=0,skip=0,lastPath=location.pathname,bk=window.__bk={},nv=window.navigation,lastIdx=nv&&nv.currentEntry?nv.currentEntry.index:-1;
+function cur(){var s=history.state;return s&&typeof s==="object"?s:{}}
+function find(k){for(var i=0;i<stack.length;i++)if(stack[i].k===k)return i;return -1}
+["pushState","replaceState"].forEach(function(m){var o=history[m];history[m]=function(){var r=o.apply(this,arguments);lastPath=location.pathname;lastIdx=nv&&nv.currentEntry?nv.currentEntry.index:-1;return r}});
+bk.has=function(k){return find(k)>-1};
+bk.open=function(k,close){var i=find(k);if(i>-1){stack[i].close=close;return}var id=++seq,s={},c=cur(),p;for(p in c)s[p]=c[p];s.bk=id;stack.push({k:k,id:id,close:close});try{history.pushState(s,"")}catch(e){}};
+bk.shut=function(k){var i=find(k);if(i<0)return;var id=stack[i].id,top=i===stack.length-1;stack.splice(i,1);
+ /* closed from the screen (not with Back): drop its history step too, unless the app has already moved on */
+ if(top)setTimeout(function(){if(cur().bk===id&&!bk.live(id)){skip++;try{history.back()}catch(e){skip--}}},0)};
+bk.live=function(id){for(var i=0;i<stack.length;i++)if(stack[i].id===id)return true;return false};
+bk.sync=function(k,on,close){if(on)bk.open(k,close);else bk.shut(k)};
+function closeAbove(id){var out=[],t;while(stack.length&&stack[stack.length-1].id>id)out.push(stack.pop());out.forEach(function(t){try{if(t.close)t.close()}catch(e){}});return out.length}
+addEventListener("popstate",function(e){
+ var n=cur().bk||0,changed=location.pathname!==lastPath,ix=nv&&nv.currentEntry?nv.currentEntry.index:-1,fwd=ix>-1&&lastIdx>-1&&ix>lastIdx;lastPath=location.pathname;lastIdx=ix;
+ if(skip>0){skip--;e.stopImmediatePropagation();return}   /* our own history step being removed */
+ var closed=closeAbove(n),live=false,i;
+ for(i=0;i<stack.length;i++)if(stack[i].id===n)live=true;
+ if(n&&!live){e.stopImmediatePropagation();try{fwd?history.forward():history.back()}catch(x){}return}   /* step of a popup that is already closed: skip it */
+ if(closed&&!changed)e.stopImmediatePropagation()
+});
+function ready(f){document.readyState==="loading"?document.addEventListener("DOMContentLoaded",f):f()}
+ready(function(){
+ function clickOf(sel){return function(){var b=document.querySelector(sel);if(b)b.click()}}
+ [["#loginModal","login","#loginClose"],["#plb","photo","#plc"],["#dos","dossier","#dx"]].forEach(function(a){
+  var el=document.querySelector(a[0]);if(!el)return;
+  function chk(){if(el.hidden)bk.shut(a[1]);else bk.open(a[1],clickOf(a[2]))}
+  new MutationObserver(chk).observe(el,{attributes:true,attributeFilter:["hidden"]})
+ });
+ /* file viewer + edit popups are added to <body> on demand */
+ new MutationObserver(function(ms){ms.forEach(function(m){
+  [].forEach.call(m.addedNodes,function(n){if(n.nodeType===1&&(n.id==="fv"||(n.dataset&&n.dataset.bk))){var k="ov"+(++seq);n.__bk=k;bk.open(k,function(){var b=n.querySelector("#fvx,#edx,#rsx");if(b)b.click();else n.remove()})}});
+  [].forEach.call(m.removedNodes,function(n){if(n.__bk)bk.shut(n.__bk)})})}).observe(document.body,{childList:true});
+ /* phone menu drawer */
+ var dv=document.getElementById("dashView"),nt=document.getElementById("navToggle");
+ if(dv)new MutationObserver(function(){if(dv.classList.contains("mobile-nav-open"))bk.open("nav",function(){dv.classList.remove("mobile-nav-open");if(nt)nt.setAttribute("aria-expanded","false")});else bk.shut("nav")}).observe(dv,{attributes:true,attributeFilter:["class"]})
+})
+})();
+</script>
 </head>
 <body>
 <script>(function(){var h=location.hash;if(!h||h.length<2)return;var m=h.match(/^#\/(\w+)/),p=null;if(m)p="/"+(m[1]==="cts"?"tests":m[1]==="directory"?"classmates":m[1]);else if(/^#(students|projects|gallery|about|contact|developer)$/.test(h))p="/"+h.slice(1);else if(h==="#top")p="/";if(p!==null)try{history.replaceState(history.state,"",p+location.search)}catch(e){}})();document.documentElement.classList.add("js");setTimeout(function(){var h=document.getElementById("hl");if(h)h.classList.add("go")},7000)</script>
@@ -2610,8 +2657,11 @@ const go=(t,o)=>{t=ALIAS[t]||t;o=o||{};const mn=$('.dash-main'),old=tab;sc[old]=
  if(!o.pop&&t!==old){ni++;try{history.pushState({v:t,i:ni},'','/'+slug(t))}catch(e){}}
  else if(o.pop)ni=(history.state&&history.state.i)||0;
  render();mn.scrollTo({top:o.pop&&t!==old?(sc[t]||0):0})};
-addEventListener('popstate',()=>{if(dv.hidden)return;const t=pathTab();if(t)go(t,{pop:1})});
-new MutationObserver(()=>{if(!dv.hidden){try{history.replaceState({v:tab,i:ni},'','/'+slug(tab))}catch(e){}}}).observe(dv,{attributes:true,attributeFilter:['hidden']});
+addEventListener('popstate',()=>{const t=pathTab();
+ if(dv.hidden){if(t&&sessionStorage.getItem('currentUser')&&!$('#mainPortal').hidden){$('#mainPortal').hidden=true;dv.hidden=false;go(t,{pop:1})}return}
+ if(t)go(t,{pop:1});else $('#dashHome').click()});
+if(!dv.hidden&&!pathTab()){try{history.replaceState({v:tab,i:ni},'','/'+slug(tab))}catch(e){}}
+new MutationObserver(()=>{if(!dv.hidden){try{const s={v:tab,i:ni},u='/'+slug(tab);if(!pathTab())history.pushState(s,'',u);else history.replaceState(s,'',u)}catch(e){}}}).observe(dv,{attributes:true,attributeFilter:['hidden']});
 const A={sel:id=>{sel=id},cm:id=>{cal=new Date(cal.getFullYear(),cal.getMonth()+ +id,1)},ct:()=>{cal=day0();sel=iso(cal)}};
 window.__d={vg:v=>{vg=v},refresh,sync,V,A,call,done,esc,toast,snd,F,S,H,E,X,mine,vis,tg,diff,rel,iso,pd,add,day0,DN,MN,fmt,dayInfo,cOpts,FOR,go,render:()=>render(),get db(){return db},get user(){return user},get tab(){return tab},get cal(){return cal},get sel(){return sel}};
 const DEL=['delClass','delCourse','delCt','delRes','delNotice','delPoll','delVac','delEv','delProject'];
