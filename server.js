@@ -207,8 +207,8 @@ const DL_MIME = { '.pdf': 'application/pdf', '.png': 'image/png', '.jpg': 'image
 const dispo = name => 'attachment; filename="' + String(name).replace(/[^\x20-\x7e]|["\\]/g, '_') + "\"; filename*=UTF-8''" + encodeURIComponent(name).replace(/['()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
 const ROOMS = ['U', 'A', 'B', 'A1', 'A2', 'B1', 'B2', 'CR'];
 // Admins can read and post in every room; students only in the batch room and their own section / group.
-// The 'CR' room is visible only to users who hold the CR role (an admin who is not a CR cannot see it).
-const roomOk = (r, u) => { if (r === 'CR') return !!u && flags(u.role).cr; if (isStaff(u)) return ROOMS.includes(r); const pl = place(u.id); return r === 'U' || (r !== '' && (r === pl.sec || r === pl.g)); };
+// The 'CR' room is visible only to CRs and the developer (CID); other admins cannot see it.
+const roomOk = (r, u) => { if (r === 'CR') return !!u && (u.id === CID || flags(u.role).cr); if (isStaff(u)) return ROOMS.includes(r); const pl = place(u.id); return r === 'U' || (r !== '' && (r === pl.sec || r === pl.g)); };
 // ---- chat attachments (any file type, optional "view once") -----------------------------
 // Files are never public: they are streamed through /api/chatfile/:id after the room check.
 // View once: every recipient can open it a single time; only the developer (CID) can open it again and again.
