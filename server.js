@@ -42,7 +42,7 @@ const pushAlert = (owner, kind, data, id) => {
   if (kind === 'notice') { title = 'New notice: ' + data.t; body = data.b; }
   else if (kind === 'ct') { title = (data.x ? 'Test cancelled: ' : data.rs ? 'Test rescheduled: ' : 'New test: ') + data.c; body = (data.ty || 'CT') + ' · ' + data.t + ' · ' + data.d + (data.tm ? ' ' + data.tm : ''); }
   else if (kind === 'ctstart') { title = (data.ty || 'CT') + ' starts now: ' + data.c; body = data.t + ' · ' + (data.tm || ctDefaultTime(data)); }
-  else if (kind === 'ctrem') { title = 'Tomorrow: ' + (data.ty || 'CT') + ' · ' + data.c; body = data.t + ' · ' + data.d + ' ' + (data.tm || ctDefaultTime(data)); }
+  else if (kind === 'ctrem') { title = (data.d === new Date(Date.now() + 216e5).toISOString().slice(0, 10) ? 'Today: ' : 'Tomorrow: ') + (data.ty || 'CT') + ' · ' + data.c; body = data.t + ' · ' + data.d + ' ' + (data.tm || ctDefaultTime(data)); }
   else if (kind === 'poll') { title = 'New poll'; body = data.q; }
   else if (kind === 'pollres') { title = 'Poll results: ' + data.q; body = data.res; }
   else if (kind === 'cancel' && !data.rm) { title = (data.k === 'Lab' ? 'Lab' : 'Class') + ' cancelled: ' + data.c; body = data.d + ' · ' + data.s + '-' + data.e; }
@@ -85,7 +85,7 @@ function timedAlerts() {
     if (r.kind === 'ct') {
       if (d.done) continue;
       const at = ctStartMs(d), rat = Date.parse(d.d + 'T18:00:00+06:00') - 864e5;
-      if (!d.rem1 && !d.sn && now >= rat) { d.rem1 = 1; run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), r.id); if (!d.x && now < at && r.ts < rat) pushAlert('', 'ctrem', d, r.id + 'm' + (d.rts || '')); }
+      if (!d.rem1 && !d.sn && now >= rat) { d.rem1 = 1; run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), r.id); if (!d.x && now < at) pushAlert('', 'ctrem', d, r.id + 'm' + (d.rts || '')); }
       if (d.sn) continue;
       if (!(now >= at)) continue;
       d.sn = 1; run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), r.id);
