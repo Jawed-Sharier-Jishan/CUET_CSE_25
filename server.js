@@ -42,6 +42,7 @@ const pushAlert = (owner, kind, data, id) => {
   if (kind === 'notice') { title = 'New notice: ' + data.t; body = data.b; }
   else if (kind === 'ct') { title = (data.x ? 'Test cancelled: ' : data.rs ? 'Test rescheduled: ' : 'New test: ') + data.c; body = (data.ty || 'CT') + ' · ' + data.t + ' · ' + data.d + (data.tm ? ' ' + data.tm : ''); }
   else if (kind === 'ctstart') { title = (data.ty || 'CT') + ' starts now: ' + data.c; body = data.t + ' · ' + (data.tm || ctDefaultTime(data)); }
+  else if (kind === 'ctrem') { title = 'Tomorrow: ' + (data.ty || 'CT') + ' · ' + data.c; body = data.t + ' · ' + data.d + ' ' + (data.tm || ctDefaultTime(data)); }
   else if (kind === 'poll') { title = 'New poll'; body = data.q; }
   else if (kind === 'pollres') { title = 'Poll results: ' + data.q; body = data.res; }
   else if (kind === 'cancel' && !data.rm) { title = (data.k === 'Lab' ? 'Lab' : 'Class') + ' cancelled: ' + data.c; body = data.d + ' · ' + data.s + '-' + data.e; }
@@ -49,7 +50,7 @@ const pushAlert = (owner, kind, data, id) => {
   else if (kind === 'node' && data.ty !== 'folder') { title = data.ty === 'link' ? 'New link' : 'New file'; body = data.t; }
   else if (kind === 'msg') { const sn = one('SELECT name FROM users WHERE id=?', owner); const room = data.r === 'U' ? 'Everyone' : data.r; title = (sn && sn.name || owner) + ' · Chat (' + room + ')'; body = data.img ? (data.t ? 'Photo: ' + data.t : 'Sent a photo') : ('fn' in data && (data.fn || data.once)) ? 'File: ' + (data.once ? 'view-once file' : data.fn) + (data.t ? ': ' + data.t : '') : data.t; }
   else return;
-  const category = ({ msg: 'chat', notice: 'notices', ct: 'tests', ctstart: 'tests', poll: 'polls', pollres: 'polls', node: 'resources', cancel: 'notices', event: 'notices' })[kind];
+  const category = ({ msg: 'chat', notice: 'notices', ct: 'tests', ctstart: 'tests', ctrem: 'tests', poll: 'polls', pollres: 'polls', node: 'resources', cancel: 'notices', event: 'notices' })[kind];
   const target = data.for || 'All';
   const recipients = all_('SELECT id,role FROM users WHERE id<>?', owner).filter(u => {
     if (kind === 'msg') return roomOk(data.r, u);
@@ -82,8 +83,11 @@ function timedAlerts() {
   for (const r of all_("SELECT id,owner,data,ts,kind FROM items WHERE kind IN ('ct','poll')")) {
     let d; try { d = JSON.parse(r.data); } catch { continue; }
     if (r.kind === 'ct') {
-      if (d.sn || d.done) continue;
-      const at = ctStartMs(d); if (!(now >= at)) continue;
+      if (d.done) continue;
+      const at = ctStartMs(d), rat = Date.parse(d.d + 'T18:00:00+06:00') - 864e5;
+      if (!d.rem1 && !d.sn && now >= rat) { d.rem1 = 1; run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), r.id); if (!d.x && now < at && r.ts < rat) pushAlert('', 'ctrem', d, r.id + 'm' + (d.rts || '')); }
+      if (d.sn) continue;
+      if (!(now >= at)) continue;
       d.sn = 1; run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), r.id);
       if (!d.x && now < at + 90 * 6e4) pushAlert('', 'ctstart', d, r.id + 's');
     } else {
@@ -457,7 +461,7 @@ async function api(req, res, m, p) {
   if (m === 'POST' && p === '/api/att') {
     const u = auth(), c = one("SELECT id FROM items WHERE kind='course' AND id=?", String(b.c)); if (!c) bad('Unknown course');
     const row = all_("SELECT * FROM items WHERE kind='att' AND owner=?", u.id).find(r => JSON.parse(r.data).c === c.id), d = row ? JSON.parse(row.data) : { c: c.id, p: 0, h: 0 };
-    if (b.k === 'z') d.p = d.h = 0; else { d.h++; if (b.k === 'p') d.p++; }
+    if (b.k === 'z') d.p = d.h = 0; else if (b.k === 'up') { if (d.h > 0 && d.p > 0) { d.h--; d.p--; } } else if (b.k === 'ua') { if (d.h - d.p > 0) d.h--; } else { d.h++; if (b.k === 'p') d.p++; }
     row ? run('UPDATE items SET data=? WHERE id=?', JSON.stringify(d), row.id) : put('att', u.id, d); return send(res, 200, { ok: 1 });
   }
   if (m === 'POST' && p === '/api/vote') {
@@ -562,7 +566,7 @@ async function api(req, res, m, p) {
       if (b.rs) { // reschedule = give a cancelled test a new date/time and bring it back (same limit checks as Restore)
         if (!(row.kind === 'ct' || (row.kind === 'event' && d.k === 'ct'))) bad('Only tests can be rescheduled');
         if (!wasCancelled) bad('Only cancelled tests can be rescheduled'); if (!DR.test(String(b.d || ''))) bad('Pick the new date'); b.x = 0; }
-      const reschedule = () => { d.d = b.d; d.rts = Date.now(); d.done = 0; delete d.sn; delete d.rn;
+      const reschedule = () => { d.d = b.d; d.rts = Date.now(); d.done = 0; delete d.sn; delete d.rn; delete d.rem1;
         if (row.kind === 'ct') d.tm = TR.test(b.tm || '') ? b.tm : '';
         else { const old = d.s, m = z => +z.slice(0, 2) * 60 + +z.slice(3); d.s = TR.test(b.s || '') ? b.s : '';
           if (d.e) { const ne = old && d.s ? m(d.e) - m(old) + m(d.s) : -1; d.e = ne > m(d.s) && ne < 1440 ? String(Math.floor(ne / 60)).padStart(2, '0') + ':' + String(ne % 60).padStart(2, '0') : ''; } } };
